@@ -1,0 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  font-family: 'Sora', sans-serif;
+  color: #f6f8f7;
+  background: #618aa4;
+  font-synthesis: none;
+}
+
+body { min-width: 320px; min-height: 100vh; overflow-x: hidden; scrollbar-width: none; }
+body::-webkit-scrollbar { display: none; }
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+::selection { background: rgba(244, 255, 255, .26); }
