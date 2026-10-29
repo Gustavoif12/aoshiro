@@ -1,22 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { createTranslator, getMonthNames, type Language } from "./i18n";
+import type { Currency } from "./types";
+import { supabase, supabaseConfigured } from "./lib/supabaseClient";
 
 type View =
   | "login" | "register" | "forgot"
   | "home" | "debts" | "categories" | "history" | "budget" | "settings" | "payment"
   | "simulation" | "goals" | "catEditor" | "notifications";
 
-type Debt     = { id: number; title: string; value: number; due: string; category: string; paid: boolean; reminder?: string; paidAt?: string; paymentMethod?: string };
-type User     = { name: string; email: string; phone?: string; password: string };
+type Debt = {
+  id: number;
+  title: string;
+  value: number;
+  due: string;
+  category: string;
+  categoryId?: number;
+  paid: boolean;
+  reminder?: string;
+  paidAt?: string;
+  paymentMethod?: string;
+};
+type User = { id: string; name: string; email: string; phone?: string };
 type Category = { id: number; name: string; color: string; budget: number };
-type Goal     = { id: number; label: string; target: number; current: number };
-// goalDeposits[goalId][monthKey] = amount deposited from that month's budget
+type Goal = { id: number; label: string; target: number; current: number };
 type MonthData = { debts: Debt[]; budget: number };
 
 const mkKey = (m: number, y: number) => `${y}-${String(m + 1).padStart(2, "0")}`;
 
-// Datas são armazenadas internamente como texto no formato DD/MM/AAAA.
-// A entrada acompanha o idioma: pt-BR/es-ES usam DD/MM/AAAA e en-US usa MM/DD/YYYY.
 const isDateText = (value: string) => /^\d{2}\/\d{2}\/\d{4}$/.test(value);
 const brToISO = (value: string) => {
   if (!isDateText(value)) return "";
@@ -64,13 +74,11 @@ const isValidDateText = (value: string) => {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 };
 
-const CURRENCIES: Record<string, { symbol: string; locale: string; code: string }> = {
+const CURRENCIES: Record<Currency, { symbol: string; locale: string; code: Currency }> = {
   BRL: { symbol: "R$",  locale: "pt-BR", code: "BRL" },
   USD: { symbol: "US$", locale: "en-US", code: "USD" },
   EUR: { symbol: "€",   locale: "de-DE", code: "EUR" },
 };
-
-const DEMO_USER: User = { name: "Carlos", email: "carlos@email.com", password: "123456" };
 
 const initialDebts: Debt[] = [];
 const initialCategories: Category[] = [
@@ -80,7 +88,6 @@ const initialCategories: Category[] = [
 ];
 const initialGoals: Goal[] = [];
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
 const card        = "rounded-3xl border border-white/10 bg-[#294a60]/75 p-5 shadow-xl";
 const btnPrimary  = "flex w-full items-center justify-center rounded-2xl bg-white py-3.5 text-sm font-semibold text-[#1d2d36] transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[.98] disabled:opacity-40";
 const btnAccent   = "flex w-full items-center justify-center rounded-2xl bg-[#c8e5dd] py-3.5 text-sm font-bold text-[#1d2d36] transition hover:bg-[#b8d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[.98]";
@@ -90,7 +97,6 @@ const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-white
 const rowBtn      = "flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/10 p-4 text-left transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
 const iconBtn     = "grid size-11 place-items-center rounded-2xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50";
 
-// ── Icon ──────────────────────────────────────────────────────────────────────
 const Icon = ({ name, size = 19 }: { name: string; size?: number }) => {
   const paths: Record<string, string> = {
     home:   "M3 10.5 12 3l9 7.5v9.1a1.4 1.4 0 0 1-1.4 1.4H4.4A1.4 1.4 0 0 1 3 19.6v-9.1ZM9 21v-6h6v6",
@@ -134,11 +140,21 @@ const FieldIcon = ({ icon, children }: { icon: string; children: React.ReactNode
   </div>
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
-export default function App() {
+const SupabaseConfigMessage = () => (
+  <main className="min-h-screen bg-[#1d2d36] p-6 text-white">
+    <div className="mx-auto mt-16 max-w-xl rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+      <h1 className="text-2xl font-bold">Supabase não configurado</h1>
+      <p className="mt-3 text-white/70">Crie um arquivo <code>.env.local</code> na raiz do projeto com:</p>
+      <pre className="mt-5 overflow-auto rounded-2xl bg-black/30 p-4 text-sm">{`VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co\nVITE_SUPABASE_PUBLISHABLE_KEY=SUA_CHAVE_PUBLICA`}</pre>
+      <p className="mt-4 text-sm text-white/60">Depois reinicie o Vite com <code>npm run dev</code>.</p>
+    </div>
+  </main>
+);
+
+const AppContent = () => {
   const [view, setView]                 = useState<View>("login");
-  const [users, setUsers]               = useState<User[]>([DEMO_USER]);
   const [currentUser, setCurrentUser]   = useState<User | null>(null);
+  const [dataLoading, setDataLoading]   = useState(true);
   const [categories, setCategories]     = useState<Category[]>(initialCategories);
   const [goals, setGoals]               = useState<Goal[]>(initialGoals);
   const [query, setQuery]               = useState("");
@@ -148,7 +164,7 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [darkMode, setDarkMode]         = useState(false);
   const [hideBalance, setHideBalance]   = useState(false);
-  const [currency, setCurrency]         = useState("BRL");
+  const [currency, setCurrency]         = useState<Currency>("BRL");
   const [language, setLanguage]         = useState<Language>(() => {
     const stored = localStorage.getItem("aoshiro_language");
     return stored === "en-US" || stored === "es-ES" || stored === "pt-BR" ? stored : "pt-BR";
@@ -192,7 +208,6 @@ export default function App() {
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
   );
 
-  // ── Month state ───────────────────────────────────────────────────────────
   const [activeMonth, setActiveMonth] = useState(() => {
   const today = new Date();
 
@@ -210,15 +225,24 @@ export default function App() {
   const debts    = monthData[monthKey]?.debts  ?? [];
   const budget   = monthData[monthKey]?.budget ?? 0;
 
-  const setDebts = (fn: Debt[] | ((p: Debt[]) => Debt[])) =>
-    setMonthData(prev => {
-      const cur  = prev[monthKey]?.debts ?? [];
-      const next = typeof fn === "function" ? fn(cur) : fn;
-      return { ...prev, [monthKey]: { budget: prev[monthKey]?.budget ?? 0, debts: next } };
-    });
+  const setDebtsForMonth = (key: string, next: Debt[]) =>
+    setMonthData(prev => ({
+      ...prev,
+      [key]: { budget: prev[key]?.budget ?? 0, debts: next },
+    }));
 
   const setBudget = (v: number) =>
     setMonthData(prev => ({ ...prev, [monthKey]: { debts: prev[monthKey]?.debts ?? [], budget: v } }));
+
+  const persistBudget = async (value: number, key = monthKey) => {
+    if (!currentUser) return;
+    const month = `${key}-01`;
+    const { error } = await supabase
+      .from("monthly_budgets")
+      .upsert({ user_id: currentUser.id, month, amount: value }, { onConflict: "user_id,month" });
+    if (error) throw error;
+    setMonthData(prev => ({ ...prev, [key]: { debts: prev[key]?.debts ?? [], budget: value } }));
+  };
 
   const prevMonthKey = () => {
     const m = activeMonth.month === 0 ? 11 : activeMonth.month - 1;
@@ -241,7 +265,133 @@ export default function App() {
     setShowCopyPrompt(!monthData[key]);
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  const loadUserData = async (user: { id: string; email?: string | null }) => {
+    setDataLoading(true);
+    try {
+      const [profileRes, categoriesRes, debtsRes, budgetsRes, goalsRes, depositsRes] = await Promise.all([
+        supabase.from("profiles").select("id,name,phone,currency,language,dark_mode,hide_balance,notifications_enabled").eq("id", user.id).single(),
+        supabase.from("categories").select("id,name,color,budget").eq("user_id", user.id).order("id"),
+        supabase.from("debts").select("id,title,value,due_date,reminder_date,category_id,paid,paid_at,payment_method,month_key").eq("user_id", user.id).order("due_date"),
+        supabase.from("monthly_budgets").select("month,amount").eq("user_id", user.id),
+        supabase.from("goals").select("id,label,target").eq("user_id", user.id).order("id"),
+        supabase.from("goal_deposits").select("goal_id,month,amount").eq("user_id", user.id).order("created_at"),
+      ]);
+
+      for (const result of [profileRes, categoriesRes, debtsRes, budgetsRes, goalsRes, depositsRes]) {
+        if (result.error) throw result.error;
+      }
+
+      const profile = profileRes.data;
+      if (!profile) throw new Error("Perfil do usuário não encontrado.");
+
+      let dbCategories = categoriesRes.data ?? [];
+      if (dbCategories.length === 0) {
+        const defaults = [
+          { user_id: user.id, name: "Alimentação", color: "#c8e5dd", budget: 0 },
+          { user_id: user.id, name: "Transporte", color: "#bdd7f0", budget: 0 },
+          { user_id: user.id, name: "Lazer & diversão", color: "#f3c982", budget: 0 },
+        ];
+        const seed = await supabase.from("categories").insert(defaults).select("id,name,color,budget");
+        if (seed.error) throw seed.error;
+        dbCategories = seed.data ?? [];
+      }
+
+      const categoriesMap = new Map<number, string>((dbCategories as Array<{id:number;name:string}>).map(c => [c.id, c.name]));
+      const dbDebts = debtsRes.data ?? [];
+      const nextMonthData: Record<string, MonthData> = {};
+      for (const b of budgetsRes.data ?? []) {
+        const key = String(b.month).slice(0, 7);
+        nextMonthData[key] = { debts: nextMonthData[key]?.debts ?? [], budget: Number(b.amount) };
+      }
+      for (const d of dbDebts) {
+        const key = String(d.month_key).slice(0, 7);
+        const debt: Debt = {
+          id: Number(d.id),
+          title: d.title,
+          value: Number(d.value),
+          due: isoToBR(String(d.due_date)),
+          category: d.category_id ? (categoriesMap.get(Number(d.category_id)) ?? "Outros") : "Outros",
+          categoryId: d.category_id ? Number(d.category_id) : undefined,
+          paid: Boolean(d.paid),
+          reminder: d.reminder_date ? isoToBR(String(d.reminder_date)) : undefined,
+          paidAt: d.paid_at ? new Date(d.paid_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) : undefined,
+          paymentMethod: d.payment_method ?? undefined,
+        };
+        nextMonthData[key] = {
+          budget: nextMonthData[key]?.budget ?? 0,
+          debts: [ ...(nextMonthData[key]?.debts ?? []), debt ],
+        };
+      }
+
+      const nextDeposits: Record<number, Record<string, number>> = {};
+      for (const row of depositsRes.data ?? []) {
+        const goalId = Number(row.goal_id);
+        const key = String(row.month).slice(0, 7);
+        nextDeposits[goalId] ??= {};
+        nextDeposits[goalId][key] = (nextDeposits[goalId][key] ?? 0) + Number(row.amount);
+      }
+
+      const languageValue = profile.language === "en-US" || profile.language === "es-ES" ? profile.language : "pt-BR";
+      const currencyValue = profile.currency === "USD" || profile.currency === "EUR" ? profile.currency : "BRL";
+      setCurrentUser({ id: user.id, name: profile.name, email: user.email ?? "", phone: profile.phone ?? undefined });
+      setCategories(dbCategories.map(c => ({ id: Number(c.id), name: c.name, color: c.color, budget: Number(c.budget) })));
+      setMonthData(nextMonthData);
+      setGoals((goalsRes.data ?? []).map(g => ({ id: Number(g.id), label: g.label, target: Number(g.target), current: 0 })));
+      setGoalDeposits(nextDeposits);
+      setCurrency(currencyValue);
+      setLanguage(languageValue);
+      setDarkMode(Boolean(profile.dark_mode));
+      setHideBalance(Boolean(profile.hide_balance));
+      setNotificationsEnabled(Boolean(profile.notifications_enabled));
+      return (budgetsRes.data ?? []).length > 0;
+    } finally {
+      setDataLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    const bootstrap = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (mounted && data.session?.user) {
+          const hasBudget = await loadUserData(data.session.user);
+          if (!hasBudget) setShowBudgetPrompt(true);
+          setView("home");
+        } else if (mounted) {
+          setDataLoading(false);
+        }
+      } catch (error) {
+        console.error(error);
+        if (mounted) { setDataLoading(false); setToast("Não foi possível carregar sua conta."); setToastError(true); }
+      }
+    };
+    void bootstrap();
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      if (event === "SIGNED_OUT") {
+        setCurrentUser(null);
+        setMonthData({});
+        setCategories([]);
+        setGoals([]);
+        setGoalDeposits({});
+        setView("login");
+        setDataLoading(false);
+      } else if (event === "PASSWORD_RECOVERY") {
+        setDataLoading(false);
+        setForgotStep("newpass");
+        setView("forgot");
+      } else if (session?.user && event !== "INITIAL_SESSION") {
+        void loadUserData(session.user).then(hasBudget => {
+          setBudgetPromptValue("");
+          setShowBudgetPrompt(!hasBudget);
+        }).catch(error => { console.error(error); setToast(error.message ?? "Erro ao carregar dados."); setToastError(true); });
+      }
+    });
+    return () => { mounted = false; listener.subscription.unsubscribe(); };
+  }, []);
+
   const fmt = (v: number) =>
     v.toLocaleString(CURRENCIES[currency].locale, { style: "currency", currency: CURRENCIES[currency].code });
 
@@ -331,93 +481,117 @@ export default function App() {
     return list;
   }, [debts, query, debtFilter, periodFilter]);
 
-  // ── Auth handlers ─────────────────────────────────────────────────────────
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (blocked) { notify("Conta bloqueada. Redefina sua senha.", true); return; }
     const fd = new FormData(e.currentTarget);
-    const found = users.find(u => u.email === fd.get("email") && u.password === fd.get("password"));
-    if (found) {
-      setCurrentUser(found);
-      setLoginAttempts(0);
-      setBlocked(false);
-      setBudgetPromptValue(monthData[monthKey]?.budget ? String(monthData[monthKey].budget) : "");
-      setShowBudgetPrompt((monthData[monthKey]?.budget ?? 0) <= 0);
-      open("home");
-    }
-    else {
+    const email = String(fd.get("email") ?? "").trim();
+    const password = String(fd.get("password") ?? "");
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
       const next = loginAttempts + 1; setLoginAttempts(next);
       if (next >= 5) { setBlocked(true); notify("Conta bloqueada após 5 tentativas.", true); }
       else notify(`${t("Credenciais incorretas. Tentativa")} ${next}/5.`, true);
+      return;
     }
+    const hasBudget = await loadUserData(data.user);
+    setLoginAttempts(0); setBlocked(false);
+    setBudgetPromptValue("");
+    setShowBudgetPrompt(!hasBudget);
+    open("home");
   };
 
-  const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const name = fd.get("name") as string;
-    const email = fd.get("email") as string;
-    const phone = (fd.get("phone") as string).trim();
-    const password = fd.get("password") as string;
-    const confirm = fd.get("confirm") as string;
-    // RN04: email e celular devem ser únicos
-    if (users.find(u => u.email === email)) { notify("E-mail já cadastrado.", true); return; }
-    if (phone && users.find(u => u.phone === phone)) { notify("Celular já cadastrado.", true); return; }
+    const name = String(fd.get("name") ?? "").trim();
+    const email = String(fd.get("email") ?? "").trim();
+    const phone = String(fd.get("phone") ?? "").trim();
+    const password = String(fd.get("password") ?? "");
+    const confirm = String(fd.get("confirm") ?? "");
     if (password !== confirm) { notify("As senhas não coincidem.", true); return; }
-    if (password.length < 6)  { notify("Senha deve ter pelo menos 6 caracteres.", true); return; }
-    const u: User = { name, email, phone: phone || undefined, password };
-    setUsers(p => [...p, u]); setCurrentUser(u); notify("Conta criada com sucesso!"); open("home");
+    if (password.length < 6) { notify("Senha deve ter pelo menos 6 caracteres.", true); return; }
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name, phone: phone || null } } });
+    if (error) { notify(error.message, true); return; }
+    if (!data.user) { notify("Não foi possível criar a conta.", true); return; }
+    if (!data.session) {
+      notify("Conta criada. Confirme seu e-mail para entrar.");
+      open("login");
+      return;
+    }
+    const hasBudget = await loadUserData(data.user);
+    setBudgetPromptValue("");
+    setShowBudgetPrompt(!hasBudget);
+    notify("Conta criada com sucesso!");
+    open("home");
   };
 
-  const handleForgot = (e: React.FormEvent) => {
+  const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (forgotStep === "email") {
-      if (!users.find(u => u.email === forgotEmail)) { notify("E-mail não encontrado.", true); return; }
-      notify(`${t("Código enviado para")} ${forgotEmail}`); setForgotStep("code");
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: window.location.origin });
+      if (error) { notify(error.message, true); return; }
+      notify("Link de recuperação enviado para seu e-mail.");
+      setForgotStep("code");
     } else if (forgotStep === "code") {
-      if (forgotCode !== "8472") { notify("Código inválido.", true); return; }
-      setForgotStep("newpass");
+      notify("Abra o link de recuperação enviado para seu e-mail.");
     } else {
       if (forgotNewPass.length < 6) { notify("Senha deve ter pelo menos 6 caracteres.", true); return; }
-      setUsers(p => p.map(u => u.email === forgotEmail ? { ...u, password: forgotNewPass } : u));
-      setBlocked(false); setLoginAttempts(0); notify("Senha redefinida com sucesso!");
+      const { error } = await supabase.auth.updateUser({ password: forgotNewPass });
+      if (error) { notify(error.message, true); return; }
+      notify("Senha redefinida com sucesso!");
       setForgotStep("email"); setForgotEmail(""); setForgotCode(""); setForgotNewPass("");
+      await supabase.auth.signOut();
       open("login");
     }
   };
 
-  const addDebt = (e: React.FormEvent) => {
+  const addDebt = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.value) return;
+    if (!currentUser || !form.title || !form.value) return;
     if (Number(form.value) <= 0) { notify("O valor deve ser maior que zero.", true); return; }
     const due = parseLocalizedDate(form.due, language);
     const reminder = form.reminder ? parseLocalizedDate(form.reminder, language) : "";
     const dateFormat = language === "en-US" ? "MM/DD/YYYY" : "DD/MM/AAAA";
     if (!due) { notify(`${t("Informe o vencimento no formato")} ${dateFormat}.`, true); return; }
     if (form.reminder && !reminder) { notify(`${t("Informe o lembrete no formato")} ${dateFormat}.`, true); return; }
-    // RN05: lembrete não pode ser posterior ao vencimento
-    if (reminder && brToISO(reminder) > brToISO(due)) {
-      notify("Lembrete não pode ser após o vencimento (RN05).", true); return;
-    }
-    setDebts(p => [{ id: Date.now(), title: form.title, value: Number(form.value), due, category: form.category || "Outros", paid: false, reminder: reminder || undefined }, ...p]);
+    if (reminder && brToISO(reminder) > brToISO(due)) { notify("Lembrete não pode ser após o vencimento (RN05).", true); return; }
+    const category = categories.find(c => c.name === form.category);
+    const payload = {
+      user_id: currentUser.id,
+      title: form.title,
+      value: Number(form.value),
+      due_date: brToISO(due),
+      reminder_date: reminder ? brToISO(reminder) : null,
+      category_id: category?.id ?? null,
+      month_key: `${monthKey}-01`,
+    };
+    const { data, error } = await supabase.from("debts").insert(payload).select("id").single();
+    if (error) { notify(error.message, true); return; }
+    const debt: Debt = { id: Number(data.id), title: form.title, value: Number(form.value), due, category: category?.name ?? "Outros", categoryId: category?.id, paid: false, reminder: reminder || undefined };
+    setDebtsForMonth(monthKey, [debt, ...debts]);
     setForm({ title: "", value: "", due: "", category: "", reminder: "" });
     notify("Dívida adicionada.");
   };
 
-  const payDebt = (method: string) => {
-    if (!selectedDebt) return;
+  const payDebt = async (method: string) => {
+    if (!selectedDebt || !currentUser) return;
+    const userId = currentUser.id;
+    const { error } = await supabase.from("debts").update({ paid: true, paid_at: new Date().toISOString(), payment_method: method }).eq("id", selectedDebt.id).eq("user_id", userId);
+    if (error) { notify(error.message, true); return; }
     const paidAt = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
-    setDebts(p => p.map(d => d.id === selectedDebt.id ? { ...d, paid: true, paidAt, paymentMethod: method } : d));
+    setDebtsForMonth(monthKey, debts.map(d => d.id === selectedDebt.id ? { ...d, paid: true, paidAt, paymentMethod: method } : d));
     setSelectedDebt(null); open("debts");
     notify(`${t("Pagamento via")} ${method === "Pix" ? "Pix" : t(method)} ${t("registrado.")}`);
   };
 
-  const addCategory = (e: React.FormEvent) => {
+  const addCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCatName || Number(newCatBudget) <= 0) { notify("Preencha nome e limite válido.", true); return; }
-    setCategories(p => [...p, { id: Date.now(), name: newCatName, color: newCatColor, budget: Number(newCatBudget) }]);
-    setNewCatName(""); setNewCatBudget(""); setNewCatColor("#c8e5dd");
-    notify("Categoria criada.");
+    if (!currentUser || !newCatName || Number(newCatBudget) <= 0) { notify("Preencha nome e limite válido.", true); return; }
+    const { data, error } = await supabase.from("categories").insert({ user_id: currentUser.id, name: newCatName.trim(), color: newCatColor, budget: Number(newCatBudget) }).select("id,name,color,budget").single();
+    if (error) { notify(error.message, true); return; }
+    setCategories(p => [...p, { id: Number(data.id), name: data.name, color: data.color, budget: Number(data.budget) }]);
+    setNewCatName(""); setNewCatBudget(""); setNewCatColor("#c8e5dd"); notify("Categoria criada.");
   };
 
   const startEditingCategory = (c: Category) => {
@@ -428,44 +602,37 @@ export default function App() {
     open("catEditor");
   };
 
-  const addGoal = (e: React.FormEvent) => {
+  const addGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newGoalLabel || Number(newGoalTarget) <= 0) { notify("Preencha descrição e valor alvo.", true); return; }
-    setGoals(p => [...p, { id: Date.now(), label: newGoalLabel, target: Number(newGoalTarget), current: 0 }]);
-    setNewGoalLabel(""); setNewGoalTarget("");
-    notify("Meta criada.");
+    if (!currentUser || !newGoalLabel || Number(newGoalTarget) <= 0) { notify("Preencha descrição e valor alvo.", true); return; }
+    const { data, error } = await supabase.from("goals").insert({ user_id: currentUser.id, label: newGoalLabel.trim(), target: Number(newGoalTarget) }).select("id,label,target").single();
+    if (error) { notify(error.message, true); return; }
+    setGoals(p => [...p, { id: Number(data.id), label: data.label, target: Number(data.target), current: 0 }]);
+    setNewGoalLabel(""); setNewGoalTarget(""); notify("Meta criada.");
   };
 
   const goalTotal = (g: Goal) => Object.values(goalDeposits[g.id] ?? {}).reduce((s, v) => s + v, 0);
 
-  const handleGoalDeposit = (e: React.FormEvent) => {
+  const handleGoalDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = Number(depositAmount);
-    if (!amt || amt <= 0) { notify("Valor deve ser maior que zero.", true); return; }
+    if (!currentUser || !amt || amt <= 0) { notify("Valor deve ser maior que zero.", true); return; }
     if (depositGoalId === null) return;
     const g = goals.find(x => x.id === depositGoalId);
     if (!g) return;
-
-    if (depositMode === "add") {
-      if (amt > available) { notify("Saldo disponível insuficiente.", true); return; }
-      setGoalDeposits(prev => {
-        const gMap = { ...(prev[depositGoalId] ?? {}) };
-        gMap[monthKey] = (gMap[monthKey] ?? 0) + amt;
-        return { ...prev, [depositGoalId]: gMap };
-      });
-      notify(`${fmt(amt)} ${t("reservado para")} "${g.label}".`);
-    } else {
-      const reserved = goalDeposits[depositGoalId]?.[monthKey] ?? 0;
-      if (amt > reserved) { notify(`Só há ${fmt(reserved)} reservado neste mês.`, true); return; }
-      setGoalDeposits(prev => {
-        const gMap = { ...(prev[depositGoalId] ?? {}) };
-        gMap[monthKey] = (gMap[monthKey] ?? 0) - amt;
-        return { ...prev, [depositGoalId]: gMap };
-      });
-      notify(`${fmt(amt)} ${t("resgatado de")} "${g.label}".`);
-    }
-    setDepositAmount("");
-    setDepositGoalId(null);
+    const reserved = goalDeposits[depositGoalId]?.[monthKey] ?? 0;
+    if (depositMode === "add" && amt > available) { notify("Saldo disponível insuficiente.", true); return; }
+    if (depositMode === "rescue" && amt > reserved) { notify(`Só há ${fmt(reserved)} reservado neste mês.`, true); return; }
+    const signedAmount = depositMode === "add" ? amt : -amt;
+    const { error } = await supabase.from("goal_deposits").insert({ user_id: currentUser.id, goal_id: depositGoalId, month: `${monthKey}-01`, amount: signedAmount });
+    if (error) { notify(error.message, true); return; }
+    setGoalDeposits(prev => {
+      const gMap = { ...(prev[depositGoalId] ?? {}) };
+      gMap[monthKey] = (gMap[monthKey] ?? 0) + signedAmount;
+      return { ...prev, [depositGoalId]: gMap };
+    });
+    notify(`${fmt(amt)} ${depositMode === "add" ? t("reservado para") : t("resgatado de")} "${g.label}".`);
+    setDepositAmount(""); setDepositGoalId(null);
   };
 
   const runSim = (e: React.FormEvent) => {
@@ -478,7 +645,6 @@ export default function App() {
     setSimResult({ montante, juros: montante - p });
   };
 
-  // ── Shared UI ─────────────────────────────────────────────────────────────
   const bgClass = `min-h-screen text-white transition-colors duration-500 ${darkMode ? BG_DARK : BG_LIGHT}`;
 
   const Toast = () => toast ? (
@@ -499,7 +665,6 @@ export default function App() {
     payment: "Registrar pagamento", simulation: "Simulação", goals: "Metas", catEditor: "Categorias",
   };
 
-  // ── Auth screens ──────────────────────────────────────────────────────────
   const authInput = "w-full bg-transparent py-3.5 text-sm text-[#1d2d36] placeholder:text-[#1d2d36]/40 outline-none";
 
   if (view === "login") return (
@@ -521,13 +686,13 @@ export default function App() {
           <form onSubmit={handleLogin} className="space-y-4" noValidate>
             <label className="block">
               <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/70">{t("E-mail")}</span>
-              <input name="email" required type="email" placeholder="voce@email.com" defaultValue="carlos@email.com"
+              <input name="email" required type="email" placeholder="voce@email.com" defaultValue=""
                 className="w-full rounded-2xl border border-transparent bg-white px-4 py-3.5 text-sm text-[#1d2d36] placeholder:text-[#1d2d36]/40 outline-none transition focus-visible:ring-2 focus-visible:ring-[#2e5f7e]"/>
             </label>
             <label className="block">
               <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/70">{t("Senha")}</span>
               <div className="flex gap-2">
-                <input name="password" required type={showPassword ? "text" : "password"} placeholder="••••••••" defaultValue="123456"
+                <input name="password" required type={showPassword ? "text" : "password"} placeholder="••••••••" defaultValue=""
                   className="min-w-0 flex-1 rounded-2xl bg-white px-4 py-3.5 text-sm text-[#1d2d36] outline-none transition focus-visible:ring-2 focus-visible:ring-[#2e5f7e]"/>
                 <button type="button" onClick={() => setShowPassword(v => !v)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
@@ -622,19 +787,14 @@ export default function App() {
                   <input required type="email" placeholder="voce@email.com" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} className={authInput}/>
                 </FieldIcon>
               </label>
-              <button type="submit" className={btnPrimary}>{t("Enviar código")}</button>
+              <button type="submit" className={btnPrimary}>{t("Enviar link")}</button>
             </>}
             {forgotStep === "code" && <>
-              <p className="text-sm leading-relaxed text-white/70">{t("Código enviado para")}<strong>{forgotEmail}</strong>.</p>
-              <p className="rounded-xl bg-[#c8e5dd]/10 px-3 py-2 text-xs text-[#c8e5dd]">💡 {t("Código de demonstração:")} <strong>8472</strong></p>
-              <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/70">{t("Código de 4 dígitos")}</span>
-                <input required maxLength={4} placeholder="0000" value={forgotCode} onChange={e => setForgotCode(e.target.value)}
-                  className="w-full rounded-2xl bg-white px-4 py-4 text-center text-2xl font-bold tracking-[.6em] text-[#1d2d36] outline-none focus-visible:ring-2 focus-visible:ring-[#2e5f7e]"/>
-              </label>
-              <button type="submit" className={btnPrimary}>{t("Verificar código")}</button>
-              <button type="button" onClick={() => { setForgotCode(""); notify("Código reenviado."); }}
-                className="w-full rounded text-center text-sm text-white/60 underline underline-offset-4 transition hover:text-white focus-visible:outline-none">{t("Reenviar código")}</button>
+              <p className="text-sm leading-relaxed text-white/70">{t("Enviamos um link de recuperação para")} <strong>{forgotEmail}</strong>.</p>
+              <p className="rounded-xl bg-[#c8e5dd]/10 px-3 py-2 text-xs leading-relaxed text-[#c8e5dd]">{t("Abra o link no e-mail. Depois desta confirmação, a tela para criar sua nova senha será liberada automaticamente.")}</p>
+              <button type="submit" className={btnPrimary}>{t("Verificar recuperação")}</button>
+              <button type="button" onClick={async () => { const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: window.location.origin }); if (error) notify(error.message, true); else notify("Link de recuperação reenviado."); }}
+                className="w-full rounded text-center text-sm text-white/60 underline underline-offset-4 transition hover:text-white focus-visible:outline-none">{t("Reenviar link")}</button>
             </>}
             {forgotStep === "newpass" && <>
               <p className="text-sm leading-relaxed text-white/70">{t("Escolha uma nova senha segura.")}</p>
@@ -652,7 +812,6 @@ export default function App() {
     </main>
   );
 
-  // ── Authenticated shell ───────────────────────────────────────────────────
   const navItems = ([ ["home","home","Início"],["debts","card","Dívidas"],["categories","grid","Categorias"],["history","chart","Histórico"] ] as const).map(([id, icon, label]) => [id, icon, t(label)] as const);
   const isMainNav = ["home","debts","categories","history"].includes(view);
 
@@ -670,7 +829,6 @@ export default function App() {
     </nav>
   );
 
-  // ── Month switcher ─────────────────────────────────────────────────────────
   const MonthNav = () => (
     <div className="flex items-center gap-0.5 rounded-2xl bg-white/10 p-1" aria-label={t("Navegar entre meses")}>
       <button onClick={goToPrev} aria-label={t("Mês anterior")}
@@ -687,7 +845,6 @@ export default function App() {
     </div>
   );
 
-  // ── Copy-from-previous prompt ─────────────────────────────────────────────
   const CopyPrompt = () => {
     if (!showCopyPrompt) return null;
     const prevKey = prevMonthKey();
@@ -704,12 +861,17 @@ export default function App() {
       } catch { return due; }
     };
 
-    const copyDebts = () => {
-      const copied = prevUnpaid.map(d => ({ ...d, id: Date.now() + Math.random(), paid: false, paidAt: undefined, due: advanceDue(d.due) }));
-      setMonthData(prev => ({
-        ...prev,
-        [monthKey]: { budget: 0, debts: copied },
+    const copyDebts = async () => {
+      if (!currentUser) return;
+      const copiedPayload = prevUnpaid.map(d => ({
+        user_id: currentUser.id, title: d.title, value: d.value, due_date: brToISO(advanceDue(d.due)),
+        reminder_date: null, category_id: d.categoryId ?? null, month_key: `${monthKey}-01`,
       }));
+      if (copiedPayload.length === 0) return;
+      const { data, error } = await supabase.from("debts").insert(copiedPayload).select("id,title,value,due_date,category_id,paid,reminder_date,paid_at,payment_method");
+      if (error) { notify(error.message, true); return; }
+      const copied: Debt[] = (data ?? []).map(d => ({ id: Number(d.id), title: d.title, value: Number(d.value), due: isoToBR(String(d.due_date)), category: d.category_id ? (categories.find(c => c.id === Number(d.category_id))?.name ?? "Outros") : "Outros", categoryId: d.category_id ? Number(d.category_id) : undefined, paid: Boolean(d.paid), reminder: undefined }));
+      setDebtsForMonth(monthKey, copied);
       setShowCopyPrompt(false);
       notify(`${copied.length} ${t(copied.length !== 1 ? "dívidas" : "dívida")} ${t(copied.length !== 1 ? "copiadas" : "copiada")} ${t("de")} ${prevName}.`);
     };
@@ -774,7 +936,6 @@ export default function App() {
 
   let content: React.ReactNode;
 
-  // ── Home ──────────────────────────────────────────────────────────────────
   if (view === "home") content = (
     <>
       <Header action={
@@ -785,12 +946,12 @@ export default function App() {
       }/>
       <CopyPrompt/>
 
-      {/* Balance card */}
+      
       <Card className="relative overflow-hidden">
         <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-[#a6c6ca]/20 blur-2xl"/>
         <div className="relative flex items-center justify-between">
           <p className={sectionLabel}>{t("Disponível neste mês")}</p>
-          <button type="button" onClick={() => setHideBalance(h => !h)}
+          <button type="button" onClick={async () => { const next = !hideBalance; setHideBalance(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ hide_balance: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }}
             aria-label={hideBalance ? "Mostrar saldo" : "Ocultar saldo"}
             className="grid size-9 place-items-center rounded-xl text-white/50 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
             <Icon name={hideBalance ? "eyeOff" : "eye"} size={18}/>
@@ -818,7 +979,7 @@ export default function App() {
         </div>
       </Card>
 
-      {/* Quick stats */}
+      
       <div className="mt-4 grid grid-cols-2 gap-4">
         <Card>
           <p className="text-xs text-white/60">{t("Em aberto")}</p>
@@ -835,7 +996,7 @@ export default function App() {
         </Card>
       </div>
 
-      {/* Ação principal: adicionar dívida */}
+      
       <button
         onClick={() => open("budget")}
         className="mt-4 flex w-full items-center justify-between rounded-3xl border border-[#c8e5dd]/40 bg-[#c8e5dd] p-5 text-left text-[#1d2d36] shadow-lg shadow-black/10 transition hover:bg-[#b8d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
@@ -853,7 +1014,7 @@ export default function App() {
         <Icon name="arrow" size={19}/>
       </button>
 
-      {/* A simulação continua como atalho secundário; categorias ficam exclusivamente na tela de Categorias. */}
+      
       <button
         onClick={() => open("simulation")}
         className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 text-left transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
@@ -865,7 +1026,7 @@ export default function App() {
         </span>
       </button>
 
-      {/* Upcoming */}
+      
       <div className="mt-8 flex items-center justify-between">
         <h2 className="text-sm font-semibold">{t("Próximos compromissos")}</h2>
         <button onClick={() => open("debts")} className="rounded text-xs font-semibold text-white/55 transition hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/50">{t("Ver todos")}</button>
@@ -892,7 +1053,6 @@ export default function App() {
     </>
   );
 
-  // ── Dívidas ───────────────────────────────────────────────────────────────
   else if (view === "debts") content = (
     <>
       <Header action={
@@ -948,7 +1108,6 @@ export default function App() {
     </>
   );
 
-  // ── Categorias ────────────────────────────────────────────────────────────
   else if (view === "categories") {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const todayStr    = today.toISOString().slice(0, 10);
@@ -1007,7 +1166,6 @@ export default function App() {
             const paidAmt  = spent(c.name);
             const openAmt  = open2(c.name);
             const isSystem = c.id === -1;
-            // hide system "Outros" card when it has no debts in this period
             if (isSystem && shown === 0) return null;
             const pct = c.budget > 0 ? Math.min(100, Math.round((shown / c.budget) * 100)) : 0;
             return (
@@ -1057,16 +1215,15 @@ export default function App() {
     );
   }
 
-  // ── Editor de categorias ──────────────────────────────────────────────────
   else if (view === "catEditor") {
-    const saveEdit = (e: React.FormEvent) => {
+    const saveEdit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!editCatName || Number(editCatBudget) <= 0) { notify("Preencha nome e limite válido.", true); return; }
-      setCategories(p => p.map(x => x.id === editingCat!.id
-        ? { ...x, name: editCatName, budget: Number(editCatBudget), color: editCatColor }
-        : x));
-      setEditingCat(null);
-      notify("Categoria atualizada.");
+      if (!editingCat || !currentUser) return;
+      const { data, error } = await supabase.from("categories").update({ name: editCatName.trim(), budget: Number(editCatBudget), color: editCatColor }).eq("id", editingCat.id).eq("user_id", currentUser.id).select("id,name,color,budget").single();
+      if (error) { notify(error.message, true); return; }
+      setCategories(p => p.map(x => x.id === editingCat.id ? { id: Number(data.id), name: data.name, budget: Number(data.budget), color: data.color } : x));
+      setEditingCat(null); notify("Categoria atualizada.");
     };
     content = (
     <>
@@ -1110,7 +1267,7 @@ export default function App() {
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>
                     </svg>
                   </button>
-                  <button onClick={() => { setCategories(p => p.filter(x => x.id !== c.id)); notify("Categoria removida."); }}
+                  <button onClick={async () => { if (!currentUser) return; const { error } = await supabase.from("categories").delete().eq("id", c.id).eq("user_id", currentUser.id); if (error) { notify(error.message, true); return; } setCategories(p => p.filter(x => x.id !== c.id)); notify("Categoria removida."); }}
                     aria-label={`Remover categoria ${catName(c.name)}`}
                     className="grid size-9 place-items-center rounded-xl text-white/40 transition hover:bg-white/10 hover:text-[#f3c982] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
                     <Icon name="trash" size={16}/>
@@ -1140,7 +1297,6 @@ export default function App() {
     );
   }
 
-  // ── Histórico ─────────────────────────────────────────────────────────────
   else if (view === "history") {
     const paid = debts.filter(d => d.paid && d.paidAt);
     const grouped = paid.reduce<Record<string, Debt[]>>((acc, d) => {
@@ -1193,7 +1349,6 @@ export default function App() {
     );
   }
 
-  // ── Nova dívida ───────────────────────────────────────────────────────────
   else if (view === "budget") content = (
     <>
       <Header backTo="debts"/>
@@ -1230,12 +1385,11 @@ export default function App() {
     </>
   );
 
-  // ── Metas ─────────────────────────────────────────────────────────────────
   else if (view === "goals") content = (
     <>
       <Header/>
 
-      {/* Deposit / rescue modal */}
+      
       {depositGoalId !== null && (() => {
         const g = goals.find(x => x.id === depositGoalId)!;
         const monthReserved = goalDeposits[g.id]?.[monthKey] ?? 0;
@@ -1292,7 +1446,7 @@ export default function App() {
                       ? <span className="rounded-full bg-[#c8e5dd]/20 px-2 py-0.5 text-[10px] font-bold text-[#c8e5dd]">{t("Concluída")}</span>
                       : <span className="text-xs font-bold text-[#c8e5dd]">{pct}%</span>
                     }
-                    <button onClick={() => { setGoals(p => p.filter(x => x.id !== g.id)); setGoalDeposits(p => { const n = {...p}; delete n[g.id]; return n; }); notify("Meta removida."); }}
+                    <button onClick={async () => { if (!currentUser) return; const { error } = await supabase.from("goals").delete().eq("id", g.id).eq("user_id", currentUser.id); if (error) { notify(error.message, true); return; } setGoals(p => p.filter(x => x.id !== g.id)); setGoalDeposits(p => { const n = {...p}; delete n[g.id]; return n; }); notify("Meta removida."); }}
                       aria-label={`Remover meta ${g.label}`}
                       className="grid size-8 place-items-center rounded-xl text-white/40 transition hover:bg-white/10 hover:text-[#f3c982] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
                       <Icon name="trash" size={14}/>
@@ -1317,7 +1471,7 @@ export default function App() {
         )}
       </ul>
 
-      {/* Reserve summary for this month */}
+      
       {goals.length > 0 && goalReserves > 0 && (
         <Card className="mb-4">
           <p className="text-xs font-semibold text-white/60">{t("Total reservado neste mês")}</p>
@@ -1335,7 +1489,6 @@ export default function App() {
     </>
   );
 
-  // ── Simulação ─────────────────────────────────────────────────────────────
   else if (view === "simulation") content = (
     <>
       <Header/>
@@ -1379,7 +1532,6 @@ export default function App() {
     </>
   );
 
-  // ── Notificações ─────────────────────────────────────────────────────────
   else if (view === "notifications") content = (
     <>
       <Header backTo="settings"/>
@@ -1392,7 +1544,7 @@ export default function App() {
             <p className="font-semibold">{t("Lembretes de vencimento")}</p>
             <p className="mt-1 text-xs leading-relaxed text-white/55">{t("Os lembretes cadastrados nas dívidas ficam ativos automaticamente enquanto a dívida estiver em aberto.")}</p>
           </div>
-          <button type="button" onClick={() => setNotificationsEnabled(v => !v)} aria-pressed={notificationsEnabled}
+          <button type="button" onClick={async () => { const next = !notificationsEnabled; setNotificationsEnabled(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ notifications_enabled: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} aria-pressed={notificationsEnabled}
             className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${notificationsEnabled ? "bg-[#c8e5dd]" : "bg-white/25"}`}>
             <span className={`absolute top-1 size-4 rounded-full bg-white shadow transition-all ${notificationsEnabled ? "left-6" : "left-1"}`}/>
           </button>
@@ -1445,7 +1597,6 @@ export default function App() {
     </>
   );
 
-  // ── Ajustes ───────────────────────────────────────────────────────────────
   else if (view === "settings") content = (
     <>
       <Header/>
@@ -1465,10 +1616,10 @@ export default function App() {
           <p className="mb-2 text-sm font-semibold">{t("Orçamento mensal")}</p>
           <input type="number" min="1" defaultValue={budget} key={budget}
             aria-label={t("Orçamento mensal")}
-            onBlur={e => { const v = Number(e.target.value); if (v > 0) { setBudget(v); notify("Orçamento atualizado."); } else { e.target.value = String(budget); }}}
+            onBlur={async e => { const v = Number(e.target.value); if (v > 0) { try { await persistBudget(v); notify("Orçamento atualizado."); } catch (error) { notify(error instanceof Error ? error.message : "Erro ao atualizar orçamento.", true); } } else { e.target.value = String(budget); }}}
             className={`${inputWhite} text-lg font-semibold`}/>
         </div>
-        <button onClick={() => setDarkMode(d => !d)} className={rowBtn} aria-pressed={darkMode}>
+        <button onClick={async () => { const next = !darkMode; setDarkMode(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ dark_mode: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} className={rowBtn} aria-pressed={darkMode}>
           <div className="flex items-center gap-3">
             <Icon name={darkMode ? "sun" : "moon"} size={18}/>
             <div>
@@ -1486,8 +1637,8 @@ export default function App() {
             <p className="text-sm font-semibold">{t("Moeda padrão")}</p>
           </div>
           <div className="flex gap-2" role="group" aria-label={t("Selecionar moeda")}>
-            {Object.entries(CURRENCIES).map(([k, v]) => (
-              <button key={k} onClick={() => { setCurrency(k); notify(`Moeda: ${k}`); }}
+            {(Object.entries(CURRENCIES) as [Currency, (typeof CURRENCIES)[Currency]][]).map(([k, v]) => (
+              <button key={k} onClick={async () => { setCurrency(k); if (currentUser) { const { error } = await supabase.from("profiles").update({ currency: k }).eq("id", currentUser.id); if (error) { notify(error.message, true); return; } } notify(`Moeda: ${k}`); }}
                 aria-pressed={currency === k}
                 className={`flex-1 rounded-xl py-2.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${currency === k ? "bg-white text-[#203d4f]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>
                 {v.symbol} {k}
@@ -1502,7 +1653,7 @@ export default function App() {
           </div>
           <div className="space-y-2" role="group" aria-label={t("Selecionar idioma")}>
             {(["pt-BR", "en-US", "es-ES"] as Language[]).map(k => (
-              <button key={k} onClick={() => setLanguage(k)}
+              <button key={k} onClick={async () => { setLanguage(k); localStorage.setItem("aoshiro_language", k); if (currentUser) { const { error } = await supabase.from("profiles").update({ language: k }).eq("id", currentUser.id); if (error) notify(error.message, true); } }}
                 aria-pressed={language === k}
                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${language === k ? "bg-white text-[#203d4f]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>
                 {t(k === "pt-BR" ? "Português (Brasil)" : k === "en-US" ? "English (US)" : "Español")}
@@ -1524,11 +1675,10 @@ export default function App() {
           </button>
         ))}
       </div>
-      <button onClick={() => { setCurrentUser(null); open("login"); }} className={`mt-6 ${btnGhost}`}>{t("Sair da conta")}</button>
+      <button onClick={async () => { await supabase.auth.signOut(); setCurrentUser(null); open("login"); }} className={`mt-6 ${btnGhost}`}>{t("Sair da conta")}</button>
     </>
   );
 
-  // ── Pagamento ─────────────────────────────────────────────────────────────
   else {
     const methods = [
       { id: "Pix",      label: "Pix",     sub: "Transferência instantânea", emoji: "⚡" },
@@ -1590,9 +1740,10 @@ export default function App() {
       notify("Informe um orçamento mensal maior que zero.", true);
       return;
     }
-    setBudget(value);
-    setShowBudgetPrompt(false);
-    setBudgetPromptValue("");
+    void persistBudget(value).then(() => {
+      setShowBudgetPrompt(false);
+      setBudgetPromptValue("");
+    }).catch(error => notify(error instanceof Error ? error.message : "Erro ao salvar orçamento.", true));
     notify("Orçamento mensal definido.");
   };
 
@@ -1631,4 +1782,8 @@ export default function App() {
       <Toast/>
     </main>
   );
+}
+
+export default function App() {
+  return supabaseConfigured ? <AppContent /> : <SupabaseConfigMessage />;
 }
