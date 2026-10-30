@@ -2,6 +2,8 @@ export type Language = "pt-BR" | "en-US" | "es-ES";
 
 export const translations: Record<Language, Record<string, string>> = {
   "pt-BR": {
+    "Adicionar": "Adicionar",
+
     "+ Depositar": "+ Depositar",
     "Abril": "Abril",
     "Abrir ajustes": "Abrir ajustes",
@@ -102,7 +104,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "Junho": "Junho",
     "Juros acumulados": "Juros acumulados",
     "Já tem conta?": "Já tem conta?",
-    "Lazer & diversão": "Lazer & diversão",
+    "Lazer e diversão": "Lazer e diversão",
     "Lembrete": "Lembrete",
     "Lembrete (opcional)": "Lembrete (opcional)",
     "Lembrete deve ser antes ou na data de vencimento.": "Lembrete deve ser antes ou na data de vencimento.",
@@ -281,6 +283,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "Ex.: 12": "Ex.: 12",
   },
   "en-US": {
+    "Adicionar": "Add",
+
     "+ Depositar": "+ Deposit",
     "Abril": "April",
     "Abrir ajustes": "Open settings",
@@ -381,7 +385,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "Junho": "June",
     "Juros acumulados": "Accumulated interest",
     "Já tem conta?": "Already have an account?",
-    "Lazer & diversão": "Leisure & fun",
+    "Lazer e diversão": "Leisure & fun",
     "Lembrete": "Reminder",
     "Lembrete (opcional)": "Reminder (optional)",
     "Lembrete deve ser antes ou na data de vencimento.": "Reminder must be on or before the due date.",
@@ -560,6 +564,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "Ex.: 12": "e.g. 12",
   },
   "es-ES": {
+    "Adicionar": "Agregar",
+
     "+ Depositar": "+ Depositar",
     "Abril": "Abril",
     "Abrir ajustes": "Abrir ajustes",
@@ -660,7 +666,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "Junho": "Junio",
     "Juros acumulados": "Intereses acumulados",
     "Já tem conta?": "¿Ya tienes una cuenta?",
-    "Lazer & diversão": "Ocio y diversión",
+    "Lazer e diversão": "Ocio y diversión",
     "Lembrete": "Recordatorio",
     "Lembrete (opcional)": "Recordatorio (opcional)",
     "Lembrete deve ser antes ou na data de vencimento.": "El recordatorio debe ser en la fecha de vencimiento o antes.",
