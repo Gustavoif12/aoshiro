@@ -886,10 +886,10 @@ const AppContent = () => {
               title={lb}
               className={`flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[19px] px-0.5 py-1.5 text-[8.5px] font-medium leading-none transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd] focus-visible:ring-offset-2 focus-visible:ring-offset-[#294a60] active:scale-[.97] min-[390px]:text-[9.5px] md:min-h-12 md:w-full md:flex-row md:flex-none md:justify-start md:gap-3 md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${isActive ? "font-semibold text-[#c8e5dd] md:bg-[#c8e5dd] md:font-bold md:text-[#203d4f] md:shadow-sm" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
             >
-              <span className={`grid size-7 shrink-0 place-items-center rounded-full transition md:size-9 md:rounded-xl ${isActive ? "bg-[#c8e5dd] text-[#203d4f] md:bg-[#203d4f]/[0.08]" : "bg-white/[0.06] md:bg-transparent"}`}>
+              <span className={`grid size-7 shrink-0 place-items-center rounded-full transition md:size-9 md:rounded-xl ${isActive ? "bg-white text-[#203d4f] md:bg-[#203d4f]/[0.08]" : "bg-white/[0.06] md:bg-transparent"}`}>
                 <Icon name={ic} size={19} />
               </span>
-              <span className={`whitespace-nowrap text-center md:text-left ${isActive ? "text-[#c8e5dd] md:text-[#203d4f]" : ""}`}>{lb}</span>
+              <span className={`whitespace-nowrap text-center md:text-left ${isActive ? "text-white md:text-[#203d4f]" : ""}`}>{lb}</span>
             </button>
           );
         })}
