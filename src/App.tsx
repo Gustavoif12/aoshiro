@@ -871,9 +871,9 @@ const AppContent = () => {
   const Nav = () => (
     <nav
       aria-label={t("Navegação principal")}
-      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[460px] px-2 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] md:static md:mx-0 md:max-w-none md:rounded-3xl md:border md:border-white/10 md:bg-[#24485e]/70 md:p-2"
+      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[460px] px-2 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] md:static md:mx-0 md:max-w-none md:rounded-3xl md:border md:border-white/10 md:bg-[#294a60]/75 md:p-2"
     >
-      <div className="flex items-stretch gap-1 rounded-[26px] border border-white/10 bg-[#19394b]/95 p-1.5 shadow-[0_8px_30px_rgba(8,28,40,0.30)] backdrop-blur-2xl md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
+      <div className="flex items-stretch gap-1 rounded-[26px] border border-white/10 bg-[#294a60]/95 p-1.5 shadow-xl backdrop-blur-2xl md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
         {navItems.map(([id, ic, lb]) => {
           const isActive = view === id;
           return (
@@ -884,12 +884,12 @@ const AppContent = () => {
               aria-current={isActive ? "page" : undefined}
               aria-label={lb}
               title={lb}
-              className={`flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[19px] px-0.5 py-1.5 text-[9px] font-medium leading-none transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd] focus-visible:ring-offset-2 focus-visible:ring-offset-[#19394b] active:scale-[.97] min-[390px]:text-[10px] md:min-h-12 md:w-full md:flex-row md:flex-none md:justify-start md:gap-3 md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${isActive ? "bg-[#c8e5dd] font-bold text-[#203d4f] shadow-sm" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
+              className={`flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[19px] px-0.5 py-1.5 text-[8.5px] font-medium leading-none transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd] focus-visible:ring-offset-2 focus-visible:ring-offset-[#294a60] active:scale-[.97] min-[390px]:text-[9.5px] md:min-h-12 md:w-full md:flex-row md:flex-none md:justify-start md:gap-3 md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${isActive ? "font-semibold text-[#c8e5dd] md:bg-[#c8e5dd] md:font-bold md:text-[#203d4f] md:shadow-sm" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
             >
-              <span className={`grid size-7 shrink-0 place-items-center rounded-xl transition md:size-9 ${isActive ? "bg-[#203d4f]/[0.08]" : "bg-white/[0.06] md:bg-transparent"}`}>
+              <span className={`grid size-7 shrink-0 place-items-center rounded-full transition md:size-9 md:rounded-xl ${isActive ? "bg-[#c8e5dd] text-[#203d4f] md:bg-[#203d4f]/[0.08]" : "bg-white/[0.06] md:bg-transparent"}`}>
                 <Icon name={ic} size={19} />
               </span>
-              <span className="whitespace-nowrap text-center md:text-left">{lb}</span>
+              <span className={`whitespace-nowrap text-center md:text-left ${isActive ? "text-[#c8e5dd] md:text-[#203d4f]" : ""}`}>{lb}</span>
             </button>
           );
         })}
