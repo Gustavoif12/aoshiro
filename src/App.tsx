@@ -869,15 +869,30 @@ const AppContent = () => {
   const isMainNav = ["home", "debts", "categories", "history"].includes(view);
 
   const Nav = () => (
-    <nav aria-label={t("Navegação principal")} className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#24485e]/95 px-2 py-2 backdrop-blur-xl md:static md:rounded-3xl md:border">
-      <div className="mx-auto flex max-w-xl items-stretch justify-between gap-0.5 md:max-w-none md:flex-col md:gap-1">
-        {navItems.map(([id, ic, lb]) => (
-          <button key={id} onClick={() => open(id)}
-            aria-current={view === id ? "page" : undefined}
-            className={`min-w-0 flex-1 basis-0 flex flex-col items-center gap-0.5 rounded-2xl px-0.5 py-2.5 text-[9px] font-semibold leading-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 min-[375px]:text-[10px] md:flex-none md:flex-row md:gap-3 md:px-4 md:text-sm ${view === id ? "bg-white text-[#203d4f]" : "text-white/65 hover:bg-white/10 hover:text-white"}`}>
-            <Icon name={ic} size={18} /><span className="max-w-full whitespace-nowrap text-center">{lb}</span>
-          </button>
-        ))}
+    <nav
+      aria-label={t("Navegação principal")}
+      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[460px] px-2 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] md:static md:mx-0 md:max-w-none md:rounded-3xl md:border md:border-white/10 md:bg-[#24485e]/70 md:p-2"
+    >
+      <div className="flex items-stretch gap-1 rounded-[26px] border border-white/10 bg-[#19394b]/95 p-1.5 shadow-[0_8px_30px_rgba(8,28,40,0.30)] backdrop-blur-2xl md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
+        {navItems.map(([id, ic, lb]) => {
+          const isActive = view === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => open(id)}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={lb}
+              title={lb}
+              className={`flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[19px] px-0.5 py-1.5 text-[9px] font-medium leading-none transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd] focus-visible:ring-offset-2 focus-visible:ring-offset-[#19394b] active:scale-[.97] min-[390px]:text-[10px] md:min-h-12 md:w-full md:flex-row md:flex-none md:justify-start md:gap-3 md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${isActive ? "bg-[#c8e5dd] font-bold text-[#203d4f] shadow-sm" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
+            >
+              <span className={`grid size-7 shrink-0 place-items-center rounded-xl transition md:size-9 ${isActive ? "bg-[#203d4f]/[0.08]" : "bg-white/[0.06] md:bg-transparent"}`}>
+                <Icon name={ic} size={19} />
+              </span>
+              <span className="whitespace-nowrap text-center md:text-left">{lb}</span>
+            </button>
+          );
+        })}
       </div>
     </nav>
   );
@@ -1801,7 +1816,7 @@ const AppContent = () => {
   };
 
   return (
-    <main className={`${bgClass} px-5 pb-28 pt-7 md:px-8 md:py-8`}>
+    <main className={`${bgClass} px-3 pb-[calc(7.25rem+env(safe-area-inset-bottom))] pt-6 min-[390px]:px-5 md:px-8 md:py-8`}>
       {showBudgetPrompt && currentUser && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="budget-prompt-title">
           <form onSubmit={saveInitialBudget} className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#294a60] p-6 shadow-2xl">
