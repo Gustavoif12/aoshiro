@@ -88,14 +88,28 @@ const initialCategories: Category[] = [
 ];
 const initialGoals: Goal[] = [];
 
-const card = "rounded-3xl border border-white/10 bg-[#294a60]/75 p-5 shadow-xl";
-const btnPrimary = "flex w-full items-center justify-center rounded-2xl bg-white py-3.5 text-sm font-semibold text-[#1d2d36] transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[.98] disabled:opacity-40";
-const btnAccent = "flex w-full items-center justify-center rounded-2xl bg-[#c8e5dd] py-3.5 text-sm font-bold text-[#1d2d36] transition hover:bg-[#b8d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent active:scale-[.98]";
-const btnGhost = "flex w-full items-center justify-center rounded-2xl border border-white/20 py-3.5 text-sm font-semibold text-white/80 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 active:scale-[.98]";
-const inputWhite = "w-full rounded-2xl bg-white px-4 py-3 text-sm text-[#1d2d36] placeholder:text-[#1d2d36]/40 outline-none focus-visible:ring-2 focus-visible:ring-[#2e5f7e] transition";
-const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-white/55";
-const rowBtn = "flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/10 p-4 text-left transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
-const iconBtn = "grid size-11 place-items-center rounded-2xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50";
+// O banco guarda o tom pastel (usado no tema escuro). No tema claro o pastel some
+// sobre a trilha (1,05–1,26:1), então pintamos o tom forte, que passa de 3:1.
+const CATEGORY_PALETTE = [
+  { pastel: "#c8e5dd", strong: "#2E7D68", name: "Verde" },
+  { pastel: "#bdd7f0", strong: "#2F6EA3", name: "Azul" },
+  { pastel: "#f3c982", strong: "#9A6A12", name: "Âmbar" },
+  { pastel: "#f0bdd7", strong: "#B0457A", name: "Rosa" },
+  { pastel: "#d7bdf0", strong: "#7457AE", name: "Lilás" },
+] as const;
+const STRONG_CATEGORY_COLOR: Record<string, string> = {
+  ...Object.fromEntries(CATEGORY_PALETTE.map(c => [c.pastel, c.strong])),
+  "#d4b8f0": "#6B6B8F", // "Outros", categoria do sistema
+};
+
+const card = "rounded-3xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-5 shadow-xl";
+const btnPrimary = "flex w-full items-center justify-center rounded-2xl bg-[color:var(--accent)] py-3.5 text-sm font-bold text-[color:var(--on-accent)] transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-2)] active:scale-[.98] disabled:cursor-not-allowed disabled:bg-[color:var(--text-2)] disabled:text-[color:var(--surface-2)]";
+const btnAccent = "flex w-full items-center justify-center rounded-2xl bg-[color:var(--accent)] py-3.5 text-sm font-bold text-[color:var(--on-accent)] transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)] active:scale-[.98]";
+const btnGhost = "flex w-full items-center justify-center rounded-2xl border border-[color:var(--field-border)] py-3.5 text-sm font-semibold text-[color:var(--text)] transition hover:bg-[color:var(--text)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] active:scale-[.98]";
+const inputWhite = "w-full rounded-2xl border border-[color:var(--field-border)] bg-white px-4 py-3 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--placeholder)] outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] transition";
+const sectionLabel = "text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]";
+const rowBtn = "flex w-full items-center justify-between rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4 text-left transition hover:bg-[color:var(--text)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]";
+const iconBtn = "grid size-11 place-items-center rounded-2xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]";
 
 const Icon = ({ name, size = 19 }: { name: string; size?: number }) => {
   const paths: Record<string, string> = {
@@ -121,6 +135,9 @@ const Icon = ({ name, size = 19 }: { name: string; size?: number }) => {
     trash: "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6",
     globe: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20ZM2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10A15 15 0 0 1 8 12a15 15 0 0 1 4-10Z",
     target: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-6a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
+    alert: "M12 8v5m0 3h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z",
+    clock: "M12 7v5l3 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z",
+    warn: "M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z",
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -130,23 +147,35 @@ const Icon = ({ name, size = 19 }: { name: string; size?: number }) => {
   );
 };
 
-const BG_LIGHT = "bg-[linear-gradient(160deg,#6d8f9e_0%,#2e5f7e_72%)]";
-const BG_DARK = "bg-[linear-gradient(160deg,#0f1c24_0%,#172533_72%)]";
+type PillTone = "danger" | "warning" | "positive";
+const PILL_TONES: Record<PillTone, string> = {
+  danger: "bg-[color:var(--danger)]/10 text-[color:var(--danger)]",
+  warning: "bg-[color:var(--warning)]/10 text-[color:var(--warning)]",
+  positive: "bg-[color:var(--positive)]/10 text-[color:var(--positive)]",
+};
+const StatusPill = ({ tone, icon, children }: { tone: PillTone; icon: string; children: React.ReactNode }) => (
+  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${PILL_TONES[tone]}`}>
+    <Icon name={icon} size={12} />{children}
+  </span>
+);
+
+const BG_LIGHT = "theme-light bg-[linear-gradient(160deg,var(--bg-2)_0%,var(--bg)_60%)]";
+const BG_DARK = "theme-dark bg-[linear-gradient(160deg,var(--bg-2)_0%,var(--bg)_60%)]";
 
 const FieldIcon = ({ icon, children }: { icon: string; children: React.ReactNode }) => (
-  <div className="flex items-center gap-3 rounded-2xl bg-white px-4 text-[#36515e] focus-within:ring-2 focus-within:ring-[#2e5f7e] transition">
+  <div className="flex items-center gap-3 rounded-2xl border border-[color:var(--field-border)] bg-white px-4 text-[color:var(--ink)] focus-within:ring-2 focus-within:ring-[color:var(--focus)] transition">
     <Icon name={icon} size={16} />
     {children}
   </div>
 );
 
 const SupabaseConfigMessage = () => (
-  <main className="min-h-screen bg-[#1d2d36] p-6 text-white">
-    <div className="mx-auto mt-16 max-w-xl rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl">
+  <main className="theme-dark min-h-screen bg-[color:var(--bg)] p-6 text-[color:var(--text)]">
+    <div className="mx-auto mt-16 max-w-xl rounded-3xl border border-[color:var(--text)]/10 bg-[color:var(--text)]/5 p-8 shadow-xl">
       <h1 className="text-2xl font-bold">Supabase não configurado</h1>
-      <p className="mt-3 text-white/70">Crie um arquivo <code>.env.local</code> na raiz do projeto com:</p>
+      <p className="mt-3 text-[color:var(--text-2)]">Crie um arquivo <code>.env.local</code> na raiz do projeto com:</p>
       <pre className="mt-5 overflow-auto rounded-2xl bg-black/30 p-4 text-sm">{`VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co\nVITE_SUPABASE_PUBLISHABLE_KEY=SUA_CHAVE_PUBLICA`}</pre>
-      <p className="mt-4 text-sm text-white/60">Depois reinicie o Vite com <code>npm run dev</code>.</p>
+      <p className="mt-4 text-sm text-[color:var(--text-2)]">Depois reinicie o Vite com <code>npm run dev</code>.</p>
     </div>
   </main>
 );
@@ -163,6 +192,7 @@ const AppContent = () => {
   const [catPeriodFilter, setCatPeriodFilter] = useState("all");
   const [showPassword, setShowPassword] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const catColor = (hex: string) => (darkMode ? hex : STRONG_CATEGORY_COLOR[hex.toLowerCase()] ?? hex);
   const [hideBalance, setHideBalance] = useState(false);
   const [currency, setCurrency] = useState<Currency>("BRL");
   const [language, setLanguage] = useState<Language>(() => {
@@ -460,6 +490,16 @@ const AppContent = () => {
     return dateText;
   };
 
+  const isOverdue = (d: Debt) => {
+    if (d.paid || !isValidDateText(d.due)) return false;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return new Date(brToISO(d.due) + "T12:00:00") < today;
+  };
+  const debtStatus = (d: Debt): { tone: PillTone; icon: string; label: string } =>
+    d.paid ? { tone: "positive", icon: "check", label: "Paga" }
+      : isOverdue(d) ? { tone: "danger", icon: "alert", label: "Atrasada" }
+        : { tone: "warning", icon: "clock", label: "Em aberto" };
+
   const notify = (msg: string, err = false) => {
     setToast(t(msg)); setToastError(err);
     window.setTimeout(() => setToast(""), 2800);
@@ -471,6 +511,15 @@ const AppContent = () => {
   const totalOpen = debts.filter(d => !d.paid).reduce((s, d) => s + d.value, 0);
   const goalReserves = goals.reduce((s, g) => s + (goalDeposits[g.id]?.[monthKey] ?? 0), 0);
   const available = budget - totalPaid - goalReserves;
+  const openPct = budget > 0 ? (totalOpen / budget) * 100 : 0;
+  // O status também vai escrito: a cor sozinha não basta para quem tem daltonismo.
+  const budgetStatus = openPct > 100
+    ? { label: "Acima do orçamento", tone: "danger" as const }
+    : openPct > 90
+      ? { label: "Quase no limite", tone: "danger" as const }
+      : openPct > 70
+        ? { label: "Atenção", tone: "warning" as const }
+        : null;
 
   const reminderItems = useMemo(() => {
     const today = new Date();
@@ -698,16 +747,16 @@ const AppContent = () => {
     setSimResult({ montante, juros: montante - p });
   };
 
-  const bgClass = `min-h-screen text-white transition-colors duration-500 ${darkMode ? BG_DARK : BG_LIGHT}`;
+  const bgClass = `min-h-screen text-[color:var(--text)] transition-colors duration-500 ${darkMode ? BG_DARK : BG_LIGHT}`;
 
   const Toast = () => toast ? (
-    <div role="alert" aria-live="polite" className={`fixed bottom-24 left-1/2 z-50 max-w-xs -translate-x-1/2 rounded-2xl px-5 py-3 text-sm font-semibold shadow-2xl md:bottom-6 ${toastError ? "bg-[#7b2d2d]" : "bg-[#183746]"}`}>
+    <div role="alert" aria-live="polite" className={`fixed bottom-24 left-1/2 z-50 max-w-xs -translate-x-1/2 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-2xl md:bottom-6 ${toastError ? "bg-[color:var(--toast-error)]" : "bg-[color:var(--toast)]"}`}>
       {toast}
     </div>
   ) : null;
 
   const BackBtn = ({ to }: { to: View }) => (
-    <button onClick={() => open(to)} className="mb-4 flex items-center gap-1.5 rounded-lg px-1 text-sm font-medium text-white/60 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+    <button onClick={() => open(to)} className="mb-4 flex items-center gap-1.5 rounded-lg px-1 text-sm font-medium text-[color:var(--text-2)] transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
       <Icon name="back" size={16} />{t("Voltar")}</button>
   );
 
@@ -718,38 +767,38 @@ const AppContent = () => {
     payment: "Registrar pagamento", simulation: "Simulação", goals: "Metas", catEditor: "Categorias",
   };
 
-  const authInput = "w-full bg-transparent py-3.5 text-sm text-[#1d2d36] placeholder:text-[#1d2d36]/40 outline-none";
+  const authInput = "w-full bg-transparent py-3.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--placeholder)] outline-none";
 
   if (view === "login") return (
     <main className={`${bgClass} flex min-h-screen items-center justify-center p-5`}>
       <Toast />
       <section className="w-full max-w-sm" aria-label={t("Entrar na conta")}>
         <div className="mb-10 flex items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-2xl bg-white/15 text-xl font-bold" aria-hidden="true">A</div>
+          <div className="grid size-12 place-items-center rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] text-xl font-bold text-[color:var(--accent-text)]" aria-hidden="true">A</div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/60">Aoshiro</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">Aoshiro</p>
             <h1 className="text-xl font-semibold">{t("Suas finanças, claras.")}</h1>
           </div>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-[#36556a]/65 p-8 shadow-2xl backdrop-blur-sm">
-          <p className="mb-7 text-sm leading-relaxed text-white/70">{t("Entre para acompanhar seu dinheiro com calma e intenção.")}</p>
+        <div className="rounded-3xl border border-[color:var(--text)]/10 bg-[color:var(--surface-2)] p-8 shadow-2xl backdrop-blur-sm">
+          <p className="mb-7 text-sm leading-relaxed text-[color:var(--text-2)]">{t("Entre para acompanhar seu dinheiro com calma e intenção.")}</p>
           {blocked && (
-            <div role="alert" className="mb-5 rounded-2xl border border-[#f3c982]/30 bg-[#f3c982]/10 px-4 py-3 text-sm text-[#f3c982]">{t("Conta bloqueada. Redefina sua senha para continuar.")}</div>
+            <div role="alert" className="mb-5 rounded-2xl border border-[color:var(--warning)]/30 bg-[color:var(--warning)]/10 px-4 py-3 text-sm text-[color:var(--warning)]">{t("Conta bloqueada. Redefina sua senha para continuar.")}</div>
           )}
           <form onSubmit={handleLogin} className="space-y-4" noValidate>
             <label className="block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/70">{t("E-mail")}</span>
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("E-mail")}</span>
               <input name="email" required type="email" placeholder="voce@email.com" defaultValue=""
-                className="w-full rounded-2xl border border-transparent bg-white px-4 py-3.5 text-sm text-[#1d2d36] placeholder:text-[#1d2d36]/40 outline-none transition focus-visible:ring-2 focus-visible:ring-[#2e5f7e]" />
+                className="w-full rounded-2xl border border-[color:var(--field-border)] bg-white px-4 py-3.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--placeholder)] outline-none transition focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]" />
             </label>
             <label className="block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/70">{t("Senha")}</span>
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("Senha")}</span>
               <div className="flex gap-2">
                 <input name="password" required type={showPassword ? "text" : "password"} placeholder="••••••••" defaultValue=""
-                  className="min-w-0 flex-1 rounded-2xl bg-white px-4 py-3.5 text-sm text-[#1d2d36] outline-none transition focus-visible:ring-2 focus-visible:ring-[#2e5f7e]" />
+                  className="min-w-0 flex-1 rounded-2xl border border-[color:var(--field-border)] bg-white px-4 py-3.5 text-sm text-[color:var(--ink)] outline-none transition focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]" />
                 <button type="button" onClick={() => setShowPassword(v => !v)}
                   aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  className={`${iconBtn} bg-white text-[#20313a] hover:bg-white/90`}>
+                  className={`${iconBtn} border border-[color:var(--field-border)] bg-white text-[color:var(--ink)] hover:bg-white/90`}>
                   <Icon name={showPassword ? "eyeOff" : "eye"} />
                 </button>
               </div>
@@ -757,11 +806,11 @@ const AppContent = () => {
             <button type="submit" disabled={blocked} className={`mt-2 ${btnPrimary}`}>{t("Entrar na minha conta")}</button>
           </form>
           <button onClick={() => { setForgotStep("email"); setForgotEmail(""); setForgotCode(""); setForgotNewPass(""); open("forgot"); }}
-            className="mt-5 w-full rounded-lg text-center text-sm font-semibold text-white/75 underline underline-offset-4 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">{t("Esqueci minha senha")}</button>
+            className="mt-5 w-full rounded-lg text-center text-sm font-semibold text-[color:var(--text-2)] underline underline-offset-4 transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Esqueci minha senha")}</button>
         </div>
-        <p className="mt-6 text-center text-sm text-white/70">
+        <p className="mt-6 text-center text-sm text-[color:var(--text-2)]">
           {t("Ainda não tem conta?")} {" "}
-          <button onClick={() => open("register")} className="rounded font-semibold text-white underline underline-offset-4 transition hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">{t("Criar agora")}</button>
+          <button onClick={() => open("register")} className="rounded font-semibold text-[color:var(--text)] underline underline-offset-4 transition hover:text-[color:var(--text-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Criar agora")}</button>
         </p>
       </section>
     </main>
@@ -773,13 +822,13 @@ const AppContent = () => {
       <section className="w-full max-w-sm" aria-label={t("Criar conta")}>
         <BackBtn to="login" />
         <div className="mb-8 flex items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-2xl bg-white/15 text-xl font-bold" aria-hidden="true">A</div>
+          <div className="grid size-12 place-items-center rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] text-xl font-bold text-[color:var(--accent-text)]" aria-hidden="true">A</div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/60">Aoshiro</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">Aoshiro</p>
             <h1 className="text-xl font-semibold">{t("Criar conta")}</h1>
           </div>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-[#36556a]/65 p-8 shadow-2xl backdrop-blur-sm">
+        <div className="rounded-3xl border border-[color:var(--text)]/10 bg-[color:var(--surface-2)] p-8 shadow-2xl backdrop-blur-sm">
           <form onSubmit={handleRegister} className="space-y-4" noValidate>
             {([
               { name: "name", label: "Nome completo", icon: "user", type: "text", ph: "Seu nome", required: true },
@@ -789,7 +838,7 @@ const AppContent = () => {
               { name: "confirm", label: "Confirmar senha", icon: "lock", type: "password", ph: "Repita a senha", required: true },
             ] as const).map(f => (
               <label key={f.name} className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/70">{t(f.label)}</span>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t(f.label)}</span>
                 <FieldIcon icon={f.icon}>
                   <input name={f.name} required={f.required} type={f.type} placeholder={t(f.ph)} className={authInput} />
                 </FieldIcon>
@@ -798,9 +847,9 @@ const AppContent = () => {
             <button type="submit" className={`mt-2 ${btnPrimary}`}>{t("Criar minha conta")}</button>
           </form>
         </div>
-        <p className="mt-6 text-center text-sm text-white/70">
+        <p className="mt-6 text-center text-sm text-[color:var(--text-2)]">
           {t("Já tem conta?")} {" "}
-          <button onClick={() => open("login")} className="rounded font-semibold text-white underline underline-offset-4 transition hover:text-white/80 focus-visible:outline-none">{t("Entrar")}</button>
+          <button onClick={() => open("login")} className="rounded font-semibold text-[color:var(--text)] underline underline-offset-4 transition hover:text-[color:var(--text-2)] focus-visible:outline-none">{t("Entrar")}</button>
         </p>
       </section>
     </main>
@@ -812,7 +861,7 @@ const AppContent = () => {
       <section className="w-full max-w-sm" aria-label={t("Redefinir senha")}>
         <BackBtn to="login" />
         <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/60">Aoshiro</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">Aoshiro</p>
           <h1 className="mt-1 text-2xl font-semibold">{t("Redefinir senha")}</h1>
         </div>
         <div className="mb-8 flex items-center gap-2" aria-label={t("Etapas")}>
@@ -821,21 +870,21 @@ const AppContent = () => {
             const done = idx > i; const active = forgotStep === s;
             return (
               <div key={s} className="flex items-center gap-2">
-                <div className={`grid size-8 place-items-center rounded-full text-xs font-bold transition-colors ${active ? "bg-white text-[#203d4f]" : done ? "bg-[#c8e5dd] text-[#203d4f]" : "bg-white/20 text-white/50"}`}
+                <div className={`grid size-8 place-items-center rounded-full text-xs font-bold transition-colors ${active ? "border-2 border-[color:var(--accent)] bg-[color:var(--surface-2)] text-[color:var(--accent-text)]" : done ? "bg-[color:var(--accent)] text-[color:var(--on-accent)]" : "border border-[color:var(--field-border)] bg-[color:var(--surface-2)] text-[color:var(--text-2)]"}`}
                   aria-current={active ? "step" : undefined}>
                   {done ? <Icon name="check" size={14} /> : i + 1}
                 </div>
-                {i < 2 && <div className={`h-px w-10 transition-colors ${done ? "bg-[#c8e5dd]" : "bg-white/20"}`} />}
+                {i < 2 && <div className={`h-px w-10 transition-colors ${done ? "bg-[color:var(--accent)]" : "bg-[color:var(--text)]/20"}`} />}
               </div>
             );
           })}
         </div>
-        <div className="rounded-3xl border border-white/10 bg-[#36556a]/65 p-8 shadow-2xl backdrop-blur-sm">
+        <div className="rounded-3xl border border-[color:var(--text)]/10 bg-[color:var(--surface-2)] p-8 shadow-2xl backdrop-blur-sm">
           <form onSubmit={handleForgot} className="space-y-5" noValidate>
             {forgotStep === "email" && <>
-              <p className="text-sm leading-relaxed text-white/70">{t("Informe seu e-mail. Enviaremos um código de verificação.")}</p>
+              <p className="text-sm leading-relaxed text-[color:var(--text-2)]">{t("Informe seu e-mail. Enviaremos um código de verificação.")}</p>
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/70">{t("E-mail")}</span>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("E-mail")}</span>
                 <FieldIcon icon="mail">
                   <input required type="email" placeholder="voce@email.com" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} className={authInput} />
                 </FieldIcon>
@@ -843,16 +892,16 @@ const AppContent = () => {
               <button type="submit" className={btnPrimary}>{t("Enviar link")}</button>
             </>}
             {forgotStep === "code" && <>
-              <p className="text-sm leading-relaxed text-white/70">{t("Enviamos um link de recuperação para")} <strong>{forgotEmail}</strong>.</p>
-              <p className="rounded-xl bg-[#c8e5dd]/10 px-3 py-2 text-xs leading-relaxed text-[#c8e5dd]">{t("Abra o link no e-mail. Depois desta confirmação, a tela para criar sua nova senha será liberada automaticamente.")}</p>
+              <p className="text-sm leading-relaxed text-[color:var(--text-2)]">{t("Enviamos um link de recuperação para")} <strong>{forgotEmail}</strong>.</p>
+              <p className="rounded-xl bg-[color:var(--accent)]/10 px-3 py-2 text-xs leading-relaxed text-[color:var(--accent-text)]">{t("Abra o link no e-mail. Depois desta confirmação, a tela para criar sua nova senha será liberada automaticamente.")}</p>
               <button type="submit" className={btnPrimary}>{t("Verificar recuperação")}</button>
               <button type="button" onClick={async () => { const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: window.location.origin }); if (error) notify(error.message, true); else notify("Link de recuperação reenviado."); }}
-                className="w-full rounded text-center text-sm text-white/60 underline underline-offset-4 transition hover:text-white focus-visible:outline-none">{t("Reenviar link")}</button>
+                className="w-full rounded text-center text-sm text-[color:var(--text-2)] underline underline-offset-4 transition hover:text-[color:var(--text)] focus-visible:outline-none">{t("Reenviar link")}</button>
             </>}
             {forgotStep === "newpass" && <>
-              <p className="text-sm leading-relaxed text-white/70">{t("Escolha uma nova senha segura.")}</p>
+              <p className="text-sm leading-relaxed text-[color:var(--text-2)]">{t("Escolha uma nova senha segura.")}</p>
               <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/70">{t("Nova senha")}</span>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("Nova senha")}</span>
                 <FieldIcon icon="lock">
                   <input required type="password" placeholder={t("Mínimo 6 caracteres")} value={forgotNewPass} onChange={e => setForgotNewPass(e.target.value)} className={authInput} />
                 </FieldIcon>
@@ -871,9 +920,9 @@ const AppContent = () => {
   const Nav = () => (
     <nav
       aria-label={t("Navegação principal")}
-      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[460px] px-2 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] md:static md:mx-0 md:max-w-none md:rounded-3xl md:border md:border-white/10 md:bg-[#294a60]/75 md:p-2"
+      className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[460px] px-2 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] md:static md:mx-0 md:max-w-none md:rounded-3xl md:border md:border-[color:var(--text)]/10 md:bg-[color:var(--surface)] md:p-2"
     >
-      <div className="flex items-stretch gap-1 rounded-[26px] border border-white/10 bg-[#294a60]/95 p-1.5 shadow-xl backdrop-blur-2xl md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
+      <div className="flex items-stretch gap-1 rounded-[26px] border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-1.5 shadow-xl backdrop-blur-2xl md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
         {navItems.map(([id, ic, lb]) => {
           const isActive = view === id;
           return (
@@ -884,12 +933,12 @@ const AppContent = () => {
               aria-current={isActive ? "page" : undefined}
               aria-label={lb}
               title={lb}
-              className={`flex min-h-[58px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[19px] px-0.5 py-1.5 text-[8.5px] font-medium leading-none transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd] focus-visible:ring-offset-2 focus-visible:ring-offset-[#294a60] active:scale-[.97] min-[390px]:text-[9.5px] md:min-h-12 md:w-full md:flex-row md:flex-none md:justify-start md:gap-3 md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${isActive ? "font-semibold text-[#c8e5dd] md:bg-[#c8e5dd] md:font-bold md:text-[#203d4f] md:shadow-sm" : "text-white/65 hover:bg-white/10 hover:text-white"}`}
+              className={`flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[19px] px-0.5 py-1.5 text-xs font-medium leading-none transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)] active:scale-[.97] md:min-h-12 md:w-full md:flex-row md:flex-none md:justify-start md:gap-3 md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${isActive ? "bg-[color:var(--accent)]/10 font-bold text-[color:var(--accent-text)] md:bg-[color:var(--accent)] md:font-bold md:text-[color:var(--on-accent)] md:shadow-sm" : "text-[color:var(--text-2)] hover:bg-[color:var(--text)]/10 hover:text-[color:var(--text)]"}`}
             >
-              <span className={`grid size-7 shrink-0 place-items-center rounded-full transition md:size-9 md:rounded-xl ${isActive ? "bg-white text-[#203d4f] md:bg-[#203d4f]/[0.08]" : "bg-white/[0.06] md:bg-transparent"}`}>
+              <span className={`grid size-7 shrink-0 place-items-center rounded-full transition md:size-9 md:rounded-xl ${isActive ? "md:bg-[color:var(--on-accent)]/[0.15]" : "md:bg-transparent"}`}>
                 <Icon name={ic} size={19} />
               </span>
-              <span className={`whitespace-nowrap text-center md:text-left ${isActive ? "text-white md:text-[#203d4f]" : ""}`}>{lb}</span>
+              <span className={`whitespace-nowrap text-center md:text-left ${isActive ? "md:text-[color:var(--on-accent)]" : ""}`}>{lb}</span>
             </button>
           );
         })}
@@ -898,16 +947,16 @@ const AppContent = () => {
   );
 
   const MonthNav = () => (
-    <div className="flex items-center gap-0.5 rounded-2xl bg-white/10 p-1" aria-label={t("Navegar entre meses")}>
+    <div className="flex items-center gap-0.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1" aria-label={t("Navegar entre meses")}>
       <button onClick={goToPrev} aria-label={t("Mês anterior")}
-        className="grid size-8 place-items-center rounded-xl transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+        className="grid size-11 place-items-center rounded-xl transition hover:bg-[color:var(--text)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
         <Icon name="back" size={15} />
       </button>
       <span className="min-w-[118px] px-1 text-center text-xs font-semibold">
         {MONTHS[activeMonth.month]} {activeMonth.year}
       </span>
       <button onClick={goToNext} aria-label={t("Próximo mês")}
-        className="grid size-8 place-items-center rounded-xl transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+        className="grid size-11 place-items-center rounded-xl transition hover:bg-[color:var(--text)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
         <Icon name="arrow" size={15} />
       </button>
     </div>
@@ -945,9 +994,9 @@ const AppContent = () => {
     };
 
     return (
-      <div className="mb-6 rounded-3xl border border-[#c8e5dd]/20 bg-[#c8e5dd]/10 p-5">
-        <p className="text-sm font-semibold text-[#c8e5dd]">{t("Novo mês")}</p>
-        <p className="mt-1 text-xs leading-relaxed text-white/70">
+      <div className="mb-6 rounded-3xl border border-[color:var(--accent)]/40 bg-[color:var(--surface)] p-5">
+        <p className="text-sm font-semibold text-[color:var(--accent-text)]">{t("Novo mês")}</p>
+        <p className="mt-1 text-xs leading-relaxed text-[color:var(--text-2)]">
           {prevUnpaid.length > 0
             ? `${prevUnpaid.length} ${t(prevUnpaid.length !== 1 ? "dívidas" : "dívida")} ${t("em aberto em")} ${prevName}. ${t("Deseja copiá-las para este mês?")}`
             : t("Nenhuma dívida pendente no mês anterior. Comece adicionando.")}
@@ -955,14 +1004,14 @@ const AppContent = () => {
         {prevUnpaid.length > 0 && (
           <div className="mt-4 flex gap-3">
             <button onClick={copyDebts}
-              className="flex-1 rounded-2xl bg-[#c8e5dd] py-2.5 text-xs font-bold text-[#1d2d36] transition hover:bg-[#b8d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd]">{t("Copiar dívidas")}</button>
+              className="flex-1 rounded-2xl bg-[color:var(--accent)] py-2.5 text-xs font-bold text-[color:var(--on-accent)] transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Copiar dívidas")}</button>
             <button onClick={() => setShowCopyPrompt(false)}
-              className="flex-1 rounded-2xl border border-white/20 py-2.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30">{t("Começar do zero")}</button>
+              className="flex-1 rounded-2xl border border-[color:var(--text)]/20 py-2.5 text-xs font-semibold text-[color:var(--text-2)] transition hover:bg-[color:var(--text)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Começar do zero")}</button>
           </div>
         )}
         {prevUnpaid.length === 0 && (
           <button onClick={() => setShowCopyPrompt(false)}
-            className="mt-3 text-xs text-white/50 underline underline-offset-4 transition hover:text-white/70">{t("Fechar")}</button>
+            className="mt-3 text-xs text-[color:var(--text-3)] underline underline-offset-4 transition hover:text-[color:var(--text-2)]">{t("Fechar")}</button>
         )}
       </div>
     );
@@ -991,10 +1040,10 @@ const AppContent = () => {
   const SegControl = ({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) => {
     const labels: Record<string, string> = { all: t("Todos"), open: t("Em aberto"), paid: t("Pagas"), today: t("Hoje"), week: t("Esta semana") };
     return (
-      <div role="group" className="flex gap-1 rounded-2xl bg-white/10 p-1">
+      <div role="group" className="flex gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1">
         {options.map(o => (
           <button key={o} type="button" onClick={() => onChange(o)} aria-pressed={value === o}
-            className={`flex-1 rounded-xl py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${value === o ? "bg-white text-[#203d4f]" : "text-white/65 hover:text-white"}`}>
+            className={`min-h-[38px] flex-1 rounded-xl py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${value === o ? "bg-[color:var(--accent)] font-bold text-[color:var(--on-accent)]" : "text-[color:var(--text-2)] hover:text-[color:var(--text)]"}`}>
             {labels[o] ?? o}
           </button>
         ))}
@@ -1008,35 +1057,37 @@ const AppContent = () => {
     <>
       <Header action={
         <button onClick={() => open("settings")} aria-label={t("Abrir ajustes")}
-          className={`${iconBtn} border border-white/15 bg-white/10 hover:bg-white/20`}>
+          className={`${iconBtn} border border-[color:var(--text)]/15 bg-[color:var(--surface)] hover:bg-[color:var(--text)]/20`}>
           <Icon name="gear" />
         </button>
       } />
       <CopyPrompt />
 
 
-      <Card className="relative overflow-hidden">
-        <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-[#a6c6ca]/20 blur-2xl" />
+      <Card className="relative overflow-hidden bg-[color:var(--surface-2)]!">
+        <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-[color:var(--accent)]/20 blur-2xl" />
         <div className="relative flex items-center justify-between">
           <p className={sectionLabel}>{t("Disponível neste mês")}</p>
           <button type="button" onClick={async () => { const next = !hideBalance; setHideBalance(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ hide_balance: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }}
-            aria-label={hideBalance ? "Mostrar saldo" : "Ocultar saldo"}
-            className="grid size-9 place-items-center rounded-xl text-white/50 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+            aria-label={hideBalance ? t("Mostrar saldo") : t("Ocultar saldo")}
+            className="-m-2 grid size-11 place-items-center rounded-xl text-[color:var(--text-2)] transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
             <Icon name={hideBalance ? "eyeOff" : "eye"} size={18} />
           </button>
         </div>
         <p className="mt-2 text-4xl font-semibold tracking-tight">
           {hideBalance ? <span aria-label={t("Saldo oculto")}>•••••</span> : fmt(available)}
         </p>
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
-          <div className="h-full rounded-full bg-[#c8e5dd] transition-all duration-500"
+        <div className="mt-5 h-2 overflow-hidden rounded-full bg-[color:var(--track)]">
+          <div className={`h-full rounded-full transition-all duration-500 ${openPct > 90 ? "bg-[color:var(--danger)]" : openPct > 70 ? "bg-[color:var(--warning)]" : "bg-[color:var(--positive)]"}`}
             style={{ width: `${Math.min(100, budget > 0 ? (totalOpen / budget) * 100 : 0)}%` }}
             role="progressbar" aria-valuenow={Math.round(budget > 0 ? (totalOpen / budget) * 100 : 0)} aria-valuemin={0} aria-valuemax={100} />
         </div>
-        <div className="mt-2 space-y-0.5 text-xs text-white/60">
-          <div className="flex justify-between">
+        <div className="mt-2 space-y-0.5 text-xs text-[color:var(--text-2)]">
+          <div className="flex items-center justify-between gap-2">
             <span>{hideBalance ? "•••••" : fmt(totalOpen)} {t("em aberto")}</span>
-            {!hideBalance && <span>{Math.round(budget > 0 ? (totalOpen / budget) * 100 : 0)}% {t("do orçamento")}</span>}
+            {!hideBalance && (budgetStatus
+              ? <StatusPill tone={budgetStatus.tone} icon="warn">{Math.round(openPct)}% · {t(budgetStatus.label)}</StatusPill>
+              : <span>{Math.round(openPct)}% {t("do orçamento")}</span>)}
           </div>
           {goalReserves > 0 && (
             <div className="flex justify-between">
@@ -1050,15 +1101,15 @@ const AppContent = () => {
 
       <div className="mt-4 grid grid-cols-2 gap-4">
         <Card>
-          <p className="text-xs text-white/60">{t("Em aberto")}</p>
+          <p className="text-xs text-[color:var(--text-2)]">{t("Em aberto")}</p>
           <p className="mt-1.5 text-xl font-semibold">{hideBalance ? "•••••" : fmt(totalOpen)}</p>
-          <button onClick={() => open("debts")} className="mt-3 flex items-center gap-1 rounded text-xs font-semibold text-[#c8e5dd] transition hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#c8e5dd]">{t("Ver dívidas")}<Icon name="arrow" size={14} />
+          <button onClick={() => open("debts")} className="mt-3 flex min-h-8 items-center gap-1 rounded text-xs font-semibold text-[color:var(--accent-text)] transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Ver dívidas")}<Icon name="arrow" size={14} />
           </button>
         </Card>
         <Card>
-          <p className="text-xs text-white/60">{t("Reserva em metas")}</p>
+          <p className="text-xs text-[color:var(--text-2)]">{t("Reserva em metas")}</p>
           <p className="mt-1.5 text-xl font-semibold">{hideBalance ? "•••" : fmt(goalReserves)}</p>
-          <button onClick={() => open("goals")} className="mt-3 flex items-center gap-1 rounded text-xs font-semibold text-[#c8e5dd] transition hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#c8e5dd]">
+          <button onClick={() => open("goals")} className="mt-3 flex min-h-8 items-center gap-1 rounded text-xs font-semibold text-[color:var(--accent-text)] transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
             {goals.length} {t(goals.length === 1 ? "meta" : "metas")} <Icon name="arrow" size={14} />
           </button>
         </Card>
@@ -1067,16 +1118,16 @@ const AppContent = () => {
 
       <button
         onClick={() => open("budget")}
-        className="mt-4 flex w-full items-center justify-between rounded-3xl border border-[#c8e5dd]/40 bg-[#c8e5dd] p-5 text-left text-[#1d2d36] shadow-lg shadow-black/10 transition hover:bg-[#b8d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+        className="mt-4 flex w-full items-center justify-between rounded-3xl border border-[color:var(--accent)]/40 bg-[color:var(--accent)] p-5 text-left text-[color:var(--on-accent)] shadow-lg shadow-black/10 transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]"
         aria-label={t("Adicionar dívida")}
       >
         <div className="flex items-center gap-4">
-          <span className="grid size-11 place-items-center rounded-2xl bg-[#203d4f] text-white" aria-hidden="true">
+          <span className="grid size-11 place-items-center rounded-2xl bg-[color:var(--on-accent)] text-[color:var(--accent)]" aria-hidden="true">
             <Icon name="plus" size={22} />
           </span>
           <span>
             <span className="block text-sm font-bold">{t("Adicionar dívida")}</span>
-            <span className="mt-0.5 block text-xs text-[#203d4f]/70">{t("Cadastre um novo compromisso")}</span>
+            <span className="mt-0.5 block text-xs text-[color:var(--on-accent)]">{t("Cadastre um novo compromisso")}</span>
           </span>
         </div>
         <Icon name="arrow" size={19} />
@@ -1085,35 +1136,38 @@ const AppContent = () => {
 
       <button
         onClick={() => open("simulation")}
-        className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 text-left transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4 text-left transition hover:bg-[color:var(--text)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]"
       >
         <Icon name="sim" size={19} />
         <span>
           <span className="block text-sm font-semibold">{t("Simulação")}</span>
-          <span className="block text-xs text-white/55">{t("Calcule juros e montante")}</span>
+          <span className="block text-xs text-[color:var(--text-2)]">{t("Calcule juros e montante")}</span>
         </span>
       </button>
 
 
       <div className="mt-8 flex items-center justify-between">
         <h2 className="text-sm font-semibold">{t("Próximos compromissos")}</h2>
-        <button onClick={() => open("debts")} className="rounded text-xs font-semibold text-white/55 transition hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/50">{t("Ver todos")}</button>
+        <button onClick={() => open("debts")} className="rounded text-xs font-semibold text-[color:var(--text-2)] transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Ver todos")}</button>
       </div>
       <ul className="mt-3 space-y-3" aria-label={t("Dívidas em aberto")}>
         {debts.filter(d => !d.paid).slice(0, 3).map(d => (
           <li key={d.id}>
             <button onClick={() => { setSelectedDebt(d); open("payment"); }}
-              className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/10 p-4 text-left transition hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+              className="flex w-full items-center justify-between rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4 text-left transition hover:bg-[color:var(--text)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
               <div>
                 <p className="text-sm font-semibold">{d.title}</p>
-                <p className="mt-0.5 text-xs text-white/55">{t("Vence")} {fmtDate(d.due)} · {catName(d.category)}{d.reminder ? ` · 🔔 ${fmtDate(d.reminder)}` : ""}</p>
+                <p className="mt-0.5 text-xs text-[color:var(--text-2)]">{t(isOverdue(d) ? "Venceu" : "Vence")} {fmtDate(d.due)} · {catName(d.category)}{d.reminder ? ` · 🔔 ${fmtDate(d.reminder)}` : ""}</p>
               </div>
-              <span className="ml-4 shrink-0 text-sm font-semibold">{hideBalance ? "•••" : fmt(d.value)}</span>
+              <span className="ml-4 flex shrink-0 flex-col items-end gap-1">
+                <span className="text-sm font-semibold">{hideBalance ? "•••" : fmt(d.value)}</span>
+                {isOverdue(d) && <StatusPill tone="danger" icon="alert">{t("Atrasada")}</StatusPill>}
+              </span>
             </button>
           </li>
         ))}
         {debts.filter(d => !d.paid).length === 0 && (
-          <li className="rounded-2xl border border-white/10 bg-white/10 p-6 text-center text-sm text-white/50">
+          <li className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-6 text-center text-sm text-[color:var(--text-3)]">
             {debts.length === 0 ? t("Nenhuma dívida neste mês.") : t("Nenhuma dívida em aberto 🎉")}
           </li>
         )}
@@ -1127,18 +1181,18 @@ const AppContent = () => {
         <button
           onClick={() => open("budget")}
           aria-label={t("Nova dívida")}
-          className="flex items-center gap-2 rounded-2xl bg-[#c8e5dd] px-4 py-2.5 text-xs font-bold text-[#203d4f] shadow-sm transition hover:bg-[#b8d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          className="flex items-center gap-2 rounded-2xl bg-[color:var(--accent)] px-4 py-2.5 text-xs font-bold text-[color:var(--on-accent)] shadow-sm transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]"
         >
           <Icon name="plus" size={16} />
           {t("Adicionar")}
         </button>
       } />
       <CopyPrompt />
-      <div className="mb-3 flex items-center gap-3 rounded-2xl bg-white px-4 text-[#36515e] transition focus-within:ring-2 focus-within:ring-[#2e5f7e]">
+      <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[color:var(--field-border)] bg-white px-4 text-[color:var(--ink)] transition focus-within:ring-2 focus-within:ring-[color:var(--focus)]">
         <Icon name="search" size={17} />
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t("Buscar dívidas")}
           aria-label={t("Buscar dívidas")}
-          className="w-full bg-transparent py-3.5 text-sm text-[#1d2d36] placeholder:text-[#1d2d36]/40 outline-none" />
+          className="w-full bg-transparent py-3.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--placeholder)] outline-none" />
       </div>
       <div className="mb-3">
         <SegControl options={["all", "open", "paid"]} value={debtFilter} onChange={setDebtFilter} />
@@ -1151,26 +1205,25 @@ const AppContent = () => {
         {filteredDebts.map(d => (
           <li key={d.id}>
             <Card className="flex items-center gap-3 py-4">
-              <span className={`size-2.5 shrink-0 rounded-full ${d.paid ? "bg-[#c8e5dd]" : "bg-[#f3c982]"}`} aria-label={d.paid ? "Paga" : "Em aberto"} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{d.title}</p>
-                <p className="mt-0.5 text-xs text-white/55">{catName(d.category)} · {fmtDate(d.due)}{d.reminder ? ` · 🔔 ${fmtDate(d.reminder)}` : ""}</p>
+                <p className="mt-0.5 mb-1.5 text-xs text-[color:var(--text-2)]">{catName(d.category)} · {fmtDate(d.due)}{d.reminder ? ` · 🔔 ${fmtDate(d.reminder)}` : ""}</p>
+                {(() => { const st = debtStatus(d); return <StatusPill tone={st.tone} icon={st.icon}>{t(st.label)}</StatusPill>; })()}
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-sm font-semibold">{hideBalance ? "•••" : fmt(d.value)}</p>
                 {d.paid
                   ? <div className="mt-1 text-right">
-                    <span className="block text-xs font-bold text-[#c8e5dd]">{t("PAGO")}</span>
-                    {d.paymentMethod && <span className="block text-xs text-white/40">{d.paymentMethod === "Pix" ? "⚡" : d.paymentMethod === "Cartão" ? "💳" : "💵"} {d.paymentMethod === "Pix" ? "Pix" : d.paymentMethod === "Cartão" ? t("Cartão") : t("Dinheiro")}</span>}
+                    {d.paymentMethod && <span className="block text-xs text-[color:var(--text-3)]">{d.paymentMethod === "Pix" ? "⚡" : d.paymentMethod === "Cartão" ? "💳" : "💵"} {d.paymentMethod === "Pix" ? "Pix" : d.paymentMethod === "Cartão" ? t("Cartão") : t("Dinheiro")}</span>}
                   </div>
                   : <button onClick={() => { setSelectedDebt(d); open("payment"); }}
-                    className="mt-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-[#203d4f] transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50">{t("PAGAR")}</button>}
+                    className="mt-2 h-9 rounded-xl border border-[color:var(--field-border)] bg-white px-3.5 text-xs font-bold tracking-wide text-[color:var(--ink)] transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("PAGAR")}</button>}
               </div>
             </Card>
           </li>
         ))}
         {filteredDebts.length === 0 && (
-          <li className="rounded-2xl border border-white/10 bg-white/10 p-8 text-center text-sm text-white/50">{t("Nenhuma dívida encontrada.")}</li>
+          <li className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-8 text-center text-sm text-[color:var(--text-3)]">{t("Nenhuma dívida encontrada.")}</li>
         )}
       </ul>
     </>
@@ -1201,7 +1254,7 @@ const AppContent = () => {
           <button
             onClick={() => open("catEditor")}
             aria-label={t("Adicionar categoria")}
-            className="flex items-center gap-2 rounded-2xl bg-[#c8e5dd] px-4 py-2.5 text-xs font-bold text-[#203d4f] shadow-sm transition hover:bg-[#b8d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            className="flex items-center gap-2 rounded-2xl bg-[color:var(--accent)] px-4 py-2.5 text-xs font-bold text-[color:var(--on-accent)] shadow-sm transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]"
           >
             <Icon name="plus" size={16} />
             {t("Adicionar")}
@@ -1210,16 +1263,16 @@ const AppContent = () => {
         <CopyPrompt />
         <button
           onClick={() => open("catEditor")}
-          className="mb-4 flex w-full items-center justify-between rounded-3xl border border-[#c8e5dd]/35 bg-[#c8e5dd]/15 p-4 text-left transition hover:bg-[#c8e5dd]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd]"
+          className="mb-4 flex w-full items-center justify-between rounded-3xl border border-[color:var(--accent)]/40 bg-[color:var(--surface)] p-4 text-left transition hover:bg-[color:var(--accent)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]"
           aria-label={t("Adicionar categoria")}
         >
           <span className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-2xl bg-[#c8e5dd] text-[#203d4f]">
+            <span className="grid size-10 place-items-center rounded-2xl bg-[color:var(--accent)] text-[color:var(--on-accent)]">
               <Icon name="plus" size={19} />
             </span>
             <span>
               <span className="block text-sm font-bold">{t("Adicionar categoria")}</span>
-              <span className="block text-xs text-white/55">{t("Crie uma nova categoria ou configure uma existente")}</span>
+              <span className="block text-xs text-[color:var(--text-2)]">{t("Crie uma nova categoria ou configure uma existente")}</span>
             </span>
           </span>
           <Icon name="arrow" size={18} />
@@ -1235,43 +1288,44 @@ const AppContent = () => {
             const openAmt = open2(c.name);
             const isSystem = c.id === -1;
             if (isSystem && shown === 0) return null;
-            const pct = c.budget > 0 ? Math.min(100, Math.round((shown / c.budget) * 100)) : 0;
+            const rawPct = c.budget > 0 ? Math.round((shown / c.budget) * 100) : 0;
+            const pct = Math.min(100, rawPct);
             return (
               <li key={c.id}>
                 <button
                   type="button"
                   onClick={() => !isSystem && startEditingCategory(c)}
                   disabled={isSystem}
-                  className={`block w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd] ${isSystem ? "cursor-default" : "cursor-pointer"}`}
+                  className={`block w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${isSystem ? "cursor-default" : "cursor-pointer"}`}
                   aria-label={isSystem ? catName(c.name) : `${t("Editar categoria")} ${catName(c.name)}`}
                 >
-                  <Card className={!isSystem ? "transition hover:bg-white/15" : ""}>
+                  <Card className={!isSystem ? "transition hover:bg-[color:var(--text)]/15" : ""}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
-                        <span className="size-3 shrink-0 rounded-full" style={{ background: c.color }} aria-hidden="true" />
+                        <span className="size-3 shrink-0 rounded-full" style={{ background: catColor(c.color) }} aria-hidden="true" />
                         <p className="text-sm font-semibold">{catName(c.name)}</p>
-                        {isSystem && <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/40">{t("sistema")}</span>}
+                        {isSystem && <span className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface-2)] px-2 py-0.5 text-xs text-[color:var(--text-3)]">{t("sistema")}</span>}
                       </div>
                       <p className="text-sm font-semibold">{hideBalance ? "•••••" : fmt(shown)}</p>
                     </div>
                     {!hideBalance && openAmt > 0 && paidAmt > 0 && (
-                      <div className="mt-2 flex gap-3 text-xs text-white/50">
-                        <span className="flex items-center gap-1"><span className="size-1.5 rounded-full bg-[#c8e5dd] inline-block" />{t("Pago:")} {fmt(paidAmt)}</span>
-                        <span className="flex items-center gap-1"><span className="size-1.5 rounded-full bg-[#f3c982] inline-block" />{t("Em aberto:")} {fmt(openAmt)}</span>
+                      <div className="mt-2 flex gap-3 text-xs text-[color:var(--text-3)]">
+                        <span className="flex items-center gap-1"><span className="size-1.5 rounded-full bg-[color:var(--accent)] inline-block" />{t("Pago:")} {fmt(paidAmt)}</span>
+                        <span className="flex items-center gap-1"><span className="size-1.5 rounded-full bg-[color:var(--warning)] inline-block" />{t("Em aberto:")} {fmt(openAmt)}</span>
                       </div>
                     )}
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15">
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: c.color }}
-                        role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${catName(c.name)}: ${pct}% utilizado`} />
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-[color:var(--track)]">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: catColor(c.color) }}
+                        role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${catName(c.name)}: ${rawPct}% ${t("utilizado")}`} />
                     </div>
-                    <div className="mt-2 flex justify-between text-xs text-white/55">
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-[color:var(--text-2)]">
                       {!isSystem
-                        ? <><span>{t("Limite:")} {hideBalance ? "•••••" : fmt(c.budget)}</span><span>{hideBalance ? "—" : `${pct}% ${t("utilizado")}`}</span></>
-                        : <span className="text-white/35">{t("Sem limite definido · categoria padrão do sistema")}</span>
+                        ? <><span>{t("Limite:")} {hideBalance ? "•••••" : fmt(c.budget)}</span>{hideBalance ? <span>—</span> : rawPct > 100 ? <StatusPill tone="danger" icon="alert">{rawPct}% · {t("acima do limite")}</StatusPill> : <span>{rawPct}% {t("utilizado")}</span>}</>
+                        : <span className="text-[color:var(--text-3)]">{t("Sem limite definido · categoria padrão do sistema")}</span>
                       }
                     </div>
                     {!isSystem && (
-                      <p className="mt-3 text-[11px] font-semibold text-[#c8e5dd]/70">{t("Clique para configurar ou editar")}</p>
+                      <p className="mt-3 text-xs font-semibold text-[color:var(--accent-text)]">{t("Clique para configurar ou editar")}</p>
                     )}
                   </Card>
                 </button>
@@ -1300,44 +1354,51 @@ const AppContent = () => {
           {categories.map(c => (
             <li key={c.id}>
               {editingCat?.id === c.id ? (
-                <form onSubmit={saveEdit} className="rounded-2xl border border-[#c8e5dd]/30 bg-[#c8e5dd]/10 p-4 space-y-3" aria-label={`Editar categoria ${catName(c.name)}`}>
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[#c8e5dd]">{t("Editando")} · {catName(c.name)}</p>
+                <form onSubmit={saveEdit} className="rounded-2xl border border-[color:var(--accent)]/40 bg-[color:var(--surface)] p-4 space-y-3" aria-label={`Editar categoria ${catName(c.name)}`}>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--accent-text)]">{t("Editando")} · {catName(c.name)}</p>
                   <input value={editCatName} onChange={e => setEditCatName(e.target.value)} placeholder={t("Nome")} aria-label={t("Nome da categoria")} className={inputWhite} />
                   <input value={editCatBudget} onChange={e => setEditCatBudget(e.target.value)} type="number" min="1" step="0.01" placeholder={t("Limite (R$)")} aria-label={t("Limite mensal")} className={inputWhite} />
-                  <div className="flex items-center gap-3" role="group" aria-label={t("Cor")}>
-                    <span className="text-xs text-white/60">{t("Cor:")}</span>
-                    {["#c8e5dd", "#bdd7f0", "#f3c982", "#f0bdd7", "#d7bdf0"].map(cor => (
-                      <button type="button" key={cor} onClick={() => setEditCatColor(cor)}
-                        aria-label={`Cor ${cor}`} aria-pressed={editCatColor === cor}
-                        className={`size-8 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${editCatColor === cor ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-transparent" : ""}`}
-                        style={{ background: cor }} />
-                    ))}
+                  <div role="radiogroup" aria-label={t("Cor")}>
+                    <span className="mb-2 block text-xs text-[color:var(--text-2)]">{t("Cor:")}</span>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {CATEGORY_PALETTE.map(({ pastel: cor, name }) => (
+                        <button type="button" key={cor} onClick={() => setEditCatColor(cor)}
+                          role="radio" aria-checked={editCatColor === cor}
+                          className={`group flex flex-col items-center gap-1.5 rounded-xl py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${editCatColor === cor ? "font-bold text-[color:var(--text)]" : "font-medium text-[color:var(--text-2)]"}`}>
+                          <span className={`grid size-10 place-items-center rounded-full transition ${editCatColor === cor ? "ring-2 ring-[color:var(--text)] ring-offset-2 ring-offset-[color:var(--surface)]" : ""}`}
+                            style={{ background: catColor(cor), color: darkMode ? "#06182B" : "#FFFFFF" }} aria-hidden="true">
+                            {editCatColor === cor && <Icon name="check" size={18} />}
+                          </span>
+                          {t(name)}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex gap-2">
-                    <button type="submit" className="flex-1 rounded-2xl bg-[#c8e5dd] py-2.5 text-xs font-bold text-[#1d2d36] transition hover:bg-[#b8d8ce] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c8e5dd]">{t("Salvar")}</button>
-                    <button type="button" onClick={() => setEditingCat(null)} className="flex-1 rounded-2xl border border-white/20 py-2.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30">{t("Cancelar")}</button>
+                    <button type="submit" className="flex-1 rounded-2xl bg-[color:var(--accent)] py-2.5 text-xs font-bold text-[color:var(--on-accent)] transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Salvar")}</button>
+                    <button type="button" onClick={() => setEditingCat(null)} className="flex-1 rounded-2xl border border-[color:var(--text)]/20 py-2.5 text-xs font-semibold text-[color:var(--text-2)] transition hover:bg-[color:var(--text)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Cancelar")}</button>
                   </div>
                 </form>
               ) : (
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/10 p-4">
+                <div className="flex items-center justify-between rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4">
                   <div className="flex items-center gap-3">
-                    <span className="size-4 shrink-0 rounded-full" style={{ background: c.color }} aria-hidden="true" />
+                    <span className="size-4 shrink-0 rounded-full" style={{ background: catColor(c.color) }} aria-hidden="true" />
                     <div>
                       <p className="text-sm font-semibold">{catName(c.name)}</p>
-                      <p className="text-xs text-white/55">{t("Limite:")} {fmt(c.budget)}</p>
+                      <p className="text-xs text-[color:var(--text-2)]">{t("Limite:")} {fmt(c.budget)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => startEditingCategory(c)}
                       aria-label={`Editar categoria ${catName(c.name)}`}
-                      className="grid size-9 place-items-center rounded-xl text-white/40 transition hover:bg-white/10 hover:text-[#bdd7f0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+                      className="grid size-9 place-items-center rounded-xl text-[color:var(--text-3)] transition hover:bg-[color:var(--text)]/10 hover:text-[color:var(--accent-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z" />
                       </svg>
                     </button>
                     <button onClick={async () => { if (!currentUser) return; const { error } = await supabase.from("categories").delete().eq("id", c.id).eq("user_id", currentUser.id); if (error) { notify(error.message, true); return; } setCategories(p => p.filter(x => x.id !== c.id)); notify("Categoria removida."); }}
                       aria-label={`Remover categoria ${catName(c.name)}`}
-                      className="grid size-9 place-items-center rounded-xl text-white/40 transition hover:bg-white/10 hover:text-[#f3c982] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+                      className="grid size-9 place-items-center rounded-xl text-[color:var(--text-3)] transition hover:bg-[color:var(--text)]/10 hover:text-[color:var(--warning)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
                       <Icon name="trash" size={16} />
                     </button>
                   </div>
@@ -1350,14 +1411,21 @@ const AppContent = () => {
           <p className="text-sm font-semibold">{t("Nova categoria")}</p>
           <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder={t("Nome da categoria")} aria-label={t("Nome")} className={inputWhite} />
           <input value={newCatBudget} onChange={e => setNewCatBudget(e.target.value)} type="number" min="1" step="0.01" placeholder={t("Limite mensal (R$)")} aria-label={t("Limite mensal")} className={inputWhite} />
-          <div className="flex items-center gap-3" role="group" aria-label={t("Cor da categoria")}>
-            <span className="text-xs text-white/60">{t("Cor:")}</span>
-            {["#c8e5dd", "#bdd7f0", "#f3c982", "#f0bdd7", "#d7bdf0"].map(cor => (
-              <button type="button" key={cor} onClick={() => setNewCatColor(cor)}
-                aria-label={`Cor ${cor}`} aria-pressed={newCatColor === cor}
-                className={`size-8 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${newCatColor === cor ? "scale-110 ring-2 ring-white ring-offset-2 ring-offset-transparent" : ""}`}
-                style={{ background: cor }} />
-            ))}
+          <div role="radiogroup" aria-label={t("Cor da categoria")}>
+            <span className="mb-2 block text-xs text-[color:var(--text-2)]">{t("Cor:")}</span>
+            <div className="grid grid-cols-5 gap-1.5">
+              {CATEGORY_PALETTE.map(({ pastel: cor, name }) => (
+                <button type="button" key={cor} onClick={() => setNewCatColor(cor)}
+                  role="radio" aria-checked={newCatColor === cor}
+                  className={`group flex flex-col items-center gap-1.5 rounded-xl py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${newCatColor === cor ? "font-bold text-[color:var(--text)]" : "font-medium text-[color:var(--text-2)]"}`}>
+                  <span className={`grid size-10 place-items-center rounded-full transition ${newCatColor === cor ? "ring-2 ring-[color:var(--text)] ring-offset-2 ring-offset-[color:var(--surface)]" : ""}`}
+                    style={{ background: catColor(cor), color: darkMode ? "#06182B" : "#FFFFFF" }} aria-hidden="true">
+                    {newCatColor === cor && <Icon name="check" size={18} />}
+                  </span>
+                  {t(name)}
+                </button>
+              ))}
+            </div>
           </div>
           <button type="submit" className={btnAccent}>{t("Criar categoria")}</button>
         </form>
@@ -1378,35 +1446,35 @@ const AppContent = () => {
         <Card className="mb-4">
           <p className={sectionLabel}>{t("Total pago")} · {MONTHS[activeMonth.month]}</p>
           <p className="mt-2 text-4xl font-semibold tracking-tight">{hideBalance ? "•••••" : fmt(totalPaid)}</p>
-          <div className="mt-4 flex justify-between text-xs text-white/60">
+          <div className="mt-4 flex justify-between text-xs text-[color:var(--text-2)]">
             <span>{t("Orçamento:")} {hideBalance ? "•••••" : fmt(budget)}</span>
             <span>{t("Restante:")} {hideBalance ? "•••••" : fmt(available)}</span>
           </div>
         </Card>
         {paid.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/10 p-10 text-center">
-            <p className="text-sm text-white/55">{t("Nenhum pagamento em")} {MONTHS[activeMonth.month]}.</p>
-            <p className="mt-1 text-xs text-white/35">{t("Pagamentos aparecerão aqui após registrados.")}</p>
+          <div className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-10 text-center">
+            <p className="text-sm text-[color:var(--text-2)]">{t("Nenhum pagamento em")} {MONTHS[activeMonth.month]}.</p>
+            <p className="mt-1 text-xs text-[color:var(--text-3)]">{t("Pagamentos aparecerão aqui após registrados.")}</p>
           </div>
         ) : (
           <Card>
             {dates.map((date, i) => (
-              <div key={date} className={i > 0 ? "mt-6 border-t border-white/15 pt-5" : ""}>
+              <div key={date} className={i > 0 ? "mt-6 border-t border-[color:var(--text)]/15 pt-5" : ""}>
                 <p className={sectionLabel}>{date}</p>
                 {grouped[date].map(d => (
                   <div key={d.id} className="mt-4 flex items-start justify-between gap-3 text-sm">
                     <div>
                       <p className="font-medium">{d.title}</p>
                       <div className="mt-1 flex items-center gap-2">
-                        <span className="text-xs text-white/45">{catName(d.category)}</span>
+                        <span className="text-xs text-[color:var(--text-3)]">{catName(d.category)}</span>
                         {d.paymentMethod && (
-                          <span className="rounded-lg bg-white/10 px-2 py-0.5 text-xs font-semibold text-white/60">
+                          <span className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-2)] px-2 py-0.5 text-xs font-semibold text-[color:var(--text-2)]">
                             {d.paymentMethod === "Pix" ? "⚡" : d.paymentMethod === "Cartão" ? "💳" : "💵"} {d.paymentMethod === "Pix" ? "Pix" : d.paymentMethod === "Cartão" ? t("Cartão") : t("Dinheiro")}
                           </span>
                         )}
                       </div>
                     </div>
-                    <span className="shrink-0 font-semibold text-[#f3c982]">− {hideBalance ? "•••••" : fmt(d.value)}</span>
+                    <span className="shrink-0 font-semibold">− {hideBalance ? "•••••" : fmt(d.value)}</span>
                   </div>
                 ))}
               </div>
@@ -1423,19 +1491,19 @@ const AppContent = () => {
       <form onSubmit={addDebt} className={`${card} space-y-4`} aria-label={t("Formulário de nova dívida")}>
         <p className="text-base font-semibold">{t("Adicionar dívida")}</p>
         <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/60">{t("Título")}</span>
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("Título")}</span>
           <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={t("Nome da dívida")} aria-required="true" className={inputWhite} />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/60">{t("Valor (R$)")}</span>
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("Valor (R$)")}</span>
           <input value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} type="number" min="0.01" step="0.01" placeholder={language === "en-US" ? "0.00" : "0,00"} aria-required="true" className={inputWhite} />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/60">{t("Vencimento")}</span>
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("Vencimento")}</span>
           <input value={form.due} onChange={e => setForm({ ...form, due: maskDateInput(e.target.value, language) })} type="text" inputMode="numeric" placeholder={language === "en-US" ? "MM/DD/YYYY" : "DD/MM/AAAA"} maxLength={10} aria-required="true" className={inputWhite} />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/60">{t("Categoria")}</span>
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("Categoria")}</span>
           <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className={inputWhite}>
             <option value="">{t("Selecionar categoria")}</option>
             {categories.map(c => <option key={c.id} value={c.name}>{catName(c.name)}</option>)}
@@ -1443,10 +1511,10 @@ const AppContent = () => {
           </select>
         </label>
         <label className="block">
-          <span className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-widest text-white/60">
+          <span className="mb-1.5 flex items-center gap-1 text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">
             <Icon name="bell" size={12} />{t("Lembrete (opcional)")}</span>
           <input value={form.reminder} onChange={e => setForm({ ...form, reminder: maskDateInput(e.target.value, language) })} type="text" inputMode="numeric" placeholder={language === "en-US" ? "MM/DD/YYYY" : "DD/MM/AAAA"} maxLength={10} className={inputWhite} />
-          {form.due && <p className="mt-1 text-xs text-white/40">{t("Lembrete deve ser antes ou na data de vencimento.")}</p>}
+          {form.due && <p className="mt-1 text-xs text-[color:var(--text-3)]">{t("Lembrete deve ser antes ou na data de vencimento.")}</p>}
         </label>
         <button type="submit" className={btnAccent}>{t("Salvar dívida")}</button>
       </form>
@@ -1467,14 +1535,14 @@ const AppContent = () => {
               <p className="text-sm font-semibold">{g.label}</p>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setDepositMode("add")}
-                  className={`rounded-2xl border py-2.5 text-xs font-semibold transition ${depositMode === "add" ? "border-[#c8e5dd] bg-[#c8e5dd]/20 text-[#c8e5dd]" : "border-white/20 text-white/60 hover:bg-white/10"}`}>{t("+ Depositar")}</button>
+                  className={`rounded-2xl border py-2.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${depositMode === "add" ? "border-[color:var(--accent)] bg-[color:var(--accent)]/20 text-[color:var(--accent-text)]" : "border-[color:var(--field-border)] text-[color:var(--text-2)] hover:bg-[color:var(--text)]/10"}`}>{t("+ Depositar")}</button>
                 <button type="button" onClick={() => setDepositMode("rescue")}
-                  className={`rounded-2xl border py-2.5 text-xs font-semibold transition ${depositMode === "rescue" ? "border-[#f3c982] bg-[#f3c982]/20 text-[#f3c982]" : "border-white/20 text-white/60 hover:bg-white/10"}`}>{t("− Resgatar")}</button>
+                  className={`rounded-2xl border py-2.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${depositMode === "rescue" ? "border-[color:var(--warning)] bg-[color:var(--warning)]/20 text-[color:var(--warning)]" : "border-[color:var(--field-border)] text-[color:var(--text-2)] hover:bg-[color:var(--text)]/10"}`}>{t("− Resgatar")}</button>
               </div>
-              <div className="rounded-2xl bg-white/8 px-4 py-3 text-xs text-white/60 space-y-0.5">
+              <div className="rounded-2xl bg-[color:var(--surface)] px-4 py-3 text-xs text-[color:var(--text-2)] space-y-0.5">
                 {depositMode === "add"
-                  ? <><span>{t("Disponível neste mês:")}</span><span className="font-semibold text-white/80">{fmt(available)}</span></>
-                  : <><span>{t("Reservado neste mês:")}</span><span className="font-semibold text-white/80">{fmt(monthReserved)}</span></>
+                  ? <><span>{t("Disponível neste mês:")}</span><span className="font-semibold text-[color:var(--text-2)]">{fmt(available)}</span></>
+                  : <><span>{t("Reservado neste mês:")}</span><span className="font-semibold text-[color:var(--text-2)]">{fmt(monthReserved)}</span></>
                 }
               </div>
               <input value={depositAmount} onChange={e => setDepositAmount(e.target.value)}
@@ -1483,7 +1551,7 @@ const AppContent = () => {
               <div className="flex gap-2">
                 <button type="button" onClick={() => { setDepositGoalId(null); setDepositAmount(""); }}
                   className={btnGhost}>{t("Cancelar")}</button>
-                <button type="submit" className={depositMode === "add" ? btnAccent : "flex w-full items-center justify-center rounded-2xl bg-[#f3c982] py-3.5 text-sm font-bold text-[#1d2d36] transition hover:bg-[#e8b96a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f3c982] active:scale-[.98]"}>
+                <button type="submit" className={depositMode === "add" ? btnAccent : "flex w-full items-center justify-center rounded-2xl bg-[color:var(--warning)] py-3.5 text-sm font-bold text-[color:var(--on-accent)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)] active:scale-[.98]"}>
                   {depositMode === "add" ? t("Reservar") : t("Resgatar")}
                 </button>
               </div>
@@ -1504,30 +1572,30 @@ const AppContent = () => {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{g.label}</p>
-                    <p className="mt-0.5 text-xs text-white/55">{fmt(accumulated)} {t("de")} {fmt(g.target)}</p>
+                    <p className="mt-0.5 text-xs text-[color:var(--text-2)]">{fmt(accumulated)} {t("de")} {fmt(g.target)}</p>
                     {monthReserved > 0 && (
-                      <p className="mt-0.5 text-xs text-[#c8e5dd]/70">{fmt(monthReserved)} {t("reservado neste mês")}</p>
+                      <p className="mt-0.5 text-xs text-[color:var(--accent-text)]">{fmt(monthReserved)} {t("reservado neste mês")}</p>
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {done
-                      ? <span className="rounded-full bg-[#c8e5dd]/20 px-2 py-0.5 text-[10px] font-bold text-[#c8e5dd]">{t("Concluída")}</span>
-                      : <span className="text-xs font-bold text-[#c8e5dd]">{pct}%</span>
+                      ? <span className="rounded-full bg-[color:var(--accent)]/20 px-2 py-0.5 text-xs font-bold text-[color:var(--accent-text)]">{t("Concluída")}</span>
+                      : <span className="text-xs font-bold text-[color:var(--accent-text)]">{pct}%</span>
                     }
                     <button onClick={async () => { if (!currentUser) return; const { error } = await supabase.from("goals").delete().eq("id", g.id).eq("user_id", currentUser.id); if (error) { notify(error.message, true); return; } setGoals(p => p.filter(x => x.id !== g.id)); setGoalDeposits(p => { const n = { ...p }; delete n[g.id]; return n; }); notify("Meta removida."); }}
                       aria-label={`Remover meta ${g.label}`}
-                      className="grid size-8 place-items-center rounded-xl text-white/40 transition hover:bg-white/10 hover:text-[#f3c982] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">
+                      className="grid size-8 place-items-center rounded-xl text-[color:var(--text-3)] transition hover:bg-[color:var(--text)]/10 hover:text-[color:var(--warning)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
                       <Icon name="trash" size={14} />
                     </button>
                   </div>
                 </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/15">
-                  <div className="h-full rounded-full bg-[#c8e5dd] transition-all duration-500" style={{ width: `${pct}%` }}
-                    role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} />
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-[color:var(--track)]">
+                  <div className={`h-full rounded-full transition-all duration-500 ${done ? "bg-[color:var(--positive)]" : "bg-[color:var(--accent)]"}`} style={{ width: `${pct}%` }}
+                    role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${g.label}: ${pct}%`} />
                 </div>
                 {!done && (
                   <button onClick={() => { setDepositGoalId(g.id); setDepositAmount(""); setDepositMode("add"); }}
-                    className="mt-3 flex items-center gap-1.5 rounded text-xs font-semibold text-[#c8e5dd] transition hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#c8e5dd]">{t("Depositar / Resgatar")}<Icon name="arrow" size={13} />
+                    className="mt-3 flex items-center gap-1.5 rounded text-xs font-semibold text-[color:var(--accent-text)] transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Depositar / Resgatar")}<Icon name="arrow" size={13} />
                   </button>
                 )}
               </Card>
@@ -1535,16 +1603,16 @@ const AppContent = () => {
           );
         })}
         {goals.length === 0 && (
-          <li className="rounded-2xl border border-white/10 bg-white/10 p-8 text-center text-sm text-white/50">{t("Nenhuma meta criada ainda.")}</li>
+          <li className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-8 text-center text-sm text-[color:var(--text-3)]">{t("Nenhuma meta criada ainda.")}</li>
         )}
       </ul>
 
 
       {goals.length > 0 && goalReserves > 0 && (
         <Card className="mb-4">
-          <p className="text-xs font-semibold text-white/60">{t("Total reservado neste mês")}</p>
+          <p className="text-xs font-semibold text-[color:var(--text-2)]">{t("Total reservado neste mês")}</p>
           <p className="mt-1 text-lg font-semibold">{fmt(goalReserves)}</p>
-          <p className="mt-0.5 text-xs text-white/50">{t("Deduzido do seu saldo disponível de")} {fmt(budget)}</p>
+          <p className="mt-0.5 text-xs text-[color:var(--text-3)]">{t("Deduzido do seu saldo disponível de")} {fmt(budget)}</p>
         </Card>
       )}
 
@@ -1562,7 +1630,7 @@ const AppContent = () => {
       <Header />
       <Card className="mb-4">
         <p className={`${sectionLabel} mb-1`}>{t("Como funciona")}</p>
-        <p className="text-sm leading-relaxed text-white/75">{t("Calcule o montante final de um valor aplicado com juros compostos mensais.")}</p>
+        <p className="text-sm leading-relaxed text-[color:var(--text-2)]">{t("Calcule o montante final de um valor aplicado com juros compostos mensais.")}</p>
       </Card>
       <form onSubmit={runSim} className={`${card} space-y-4`} aria-label={t("Parâmetros da simulação")}>
         <p className="text-sm font-semibold">{t("Parâmetros")}</p>
@@ -1572,7 +1640,7 @@ const AppContent = () => {
           { label: t("Prazo (meses)"), val: simMonths, set: setSimMonths, ph: t("Ex.: 12"), min: "1", step: "1" },
         ].map(f => (
           <label key={f.label} className="block">
-            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-white/60">{f.label}</span>
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{f.label}</span>
             <input value={f.val} onChange={e => f.set(e.target.value)} required type="number" min={f.min} step={f.step} placeholder={f.ph} className={inputWhite} />
           </label>
         ))}
@@ -1583,16 +1651,16 @@ const AppContent = () => {
           <p className={`${sectionLabel} mb-4`}>{t("Resultado")}</p>
           <dl className="space-y-3">
             <div className="flex justify-between text-sm">
-              <dt className="text-white/70">{t("Valor inicial")}</dt>
+              <dt className="text-[color:var(--text-2)]">{t("Valor inicial")}</dt>
               <dd className="font-semibold">{fmt(Number(simPrincipal))}</dd>
             </div>
             <div className="flex justify-between text-sm">
-              <dt className="text-white/70">{t("Juros acumulados")}</dt>
-              <dd className="font-semibold text-[#f3c982]">{fmt(simResult.juros)}</dd>
+              <dt className="text-[color:var(--text-2)]">{t("Juros acumulados")}</dt>
+              <dd className="font-semibold text-[color:var(--warning)]">{fmt(simResult.juros)}</dd>
             </div>
-            <div className="flex justify-between border-t border-white/15 pt-3">
+            <div className="flex justify-between border-t border-[color:var(--text)]/15 pt-3">
               <dt className="font-semibold">{t("Montante final")}</dt>
-              <dd className="text-xl font-semibold text-[#c8e5dd]">{fmt(simResult.montante)}</dd>
+              <dd className="text-xl font-semibold text-[color:var(--accent-text)]">{fmt(simResult.montante)}</dd>
             </div>
           </dl>
         </Card>
@@ -1605,20 +1673,20 @@ const AppContent = () => {
       <Header backTo="settings" />
       <Card className="mb-4">
         <div className="flex items-start gap-4">
-          <div className={`grid size-12 shrink-0 place-items-center rounded-2xl ${notificationsEnabled ? "bg-[#c8e5dd]/15 text-[#c8e5dd]" : "bg-white/10 text-white/50"}`}>
+          <div className={`grid size-12 shrink-0 place-items-center rounded-2xl ${notificationsEnabled ? "bg-[color:var(--accent)]/15 text-[color:var(--accent-text)]" : "bg-[color:var(--surface)] text-[color:var(--text-3)]"}`}>
             <Icon name="bell" size={22} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold">{t("Lembretes de vencimento")}</p>
-            <p className="mt-1 text-xs leading-relaxed text-white/55">{t("Os lembretes cadastrados nas dívidas ficam ativos automaticamente enquanto a dívida estiver em aberto.")}</p>
+            <p className="mt-1 text-xs leading-relaxed text-[color:var(--text-2)]">{t("Os lembretes cadastrados nas dívidas ficam ativos automaticamente enquanto a dívida estiver em aberto.")}</p>
           </div>
-          <button type="button" onClick={async () => { const next = !notificationsEnabled; setNotificationsEnabled(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ notifications_enabled: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} aria-pressed={notificationsEnabled}
-            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${notificationsEnabled ? "bg-[#c8e5dd]" : "bg-white/25"}`}>
-            <span className={`absolute top-1 size-4 rounded-full bg-white shadow transition-all ${notificationsEnabled ? "left-6" : "left-1"}`} />
+          <button type="button" onClick={async () => { const next = !notificationsEnabled; setNotificationsEnabled(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ notifications_enabled: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} role="switch" aria-checked={notificationsEnabled} aria-label={t("Lembretes de vencimento")}
+            className={`relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)] ${notificationsEnabled ? "bg-[color:var(--accent)]" : "bg-[color:var(--toggle-off)]"}`}>
+            <span className={`absolute top-1 size-[22px] rounded-full bg-[color:var(--knob)] shadow transition-all ${notificationsEnabled ? "left-[26px]" : "left-1"}`} />
           </button>
         </div>
-        <div className="mt-4 rounded-2xl bg-white/10 p-3 text-xs text-white/60">
-          <strong className="text-white/80">{activeReminderCount}</strong>{t("lembrete(s) ativo(s) para datas futuras ou de hoje.")}</div>
+        <div className="mt-4 rounded-2xl bg-[color:var(--surface)] p-3 text-xs text-[color:var(--text-2)]">
+          <strong className="text-[color:var(--text-2)]">{activeReminderCount}</strong>{t("lembrete(s) ativo(s) para datas futuras ou de hoje.")}</div>
       </Card>
 
       {typeof window !== "undefined" && "Notification" in window && (
@@ -1627,14 +1695,14 @@ const AppContent = () => {
             <Icon name="bell" size={18} />
             <div className="flex-1">
               <p className="text-sm font-semibold">{t("Notificações do dispositivo")}</p>
-              <p className="text-xs text-white/55">{notificationPermission === "granted" ? t("Ativadas neste navegador") : notificationPermission === "denied" ? t("Bloqueadas pelo navegador") : t("Permita alertas para receber os lembretes")}</p>
+              <p className="text-xs text-[color:var(--text-2)]">{notificationPermission === "granted" ? t("Ativadas neste navegador") : notificationPermission === "denied" ? t("Bloqueadas pelo navegador") : t("Permita alertas para receber os lembretes")}</p>
             </div>
             {notificationPermission !== "granted" && notificationPermission !== "denied" && (
               <button type="button" onClick={async () => {
                 const permission = await Notification.requestPermission();
                 setNotificationPermission(permission);
                 if (permission === "granted") notify("Notificações ativadas.");
-              }} className="rounded-xl bg-[#c8e5dd] px-3 py-2 text-xs font-bold text-[#1d2d36]">{t("Ativar")}</button>
+              }} className="min-h-11 rounded-xl bg-[color:var(--accent)] px-4 py-2 text-xs font-bold text-[color:var(--on-accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)]">{t("Ativar")}</button>
             )}
           </div>
         </Card>
@@ -1643,20 +1711,20 @@ const AppContent = () => {
       <p className={`${sectionLabel} mb-3`}>{t("Lembretes cadastrados")}</p>
       <div className="space-y-2">
         {reminderItems.length === 0 && (
-          <Card><p className="text-center text-sm text-white/55">{t("Nenhum lembrete ativo. Adicione um lembrete ao cadastrar uma dívida.")}</p></Card>
+          <Card><p className="text-center text-sm text-[color:var(--text-2)]">{t("Nenhum lembrete ativo. Adicione um lembrete ao cadastrar uma dívida.")}</p></Card>
         )}
         {reminderItems.map(item => (
           <button key={`${item.monthKey}-${item.debt.id}-${item.kind}`} onClick={() => { setActiveMonth({ month: Number(item.monthKey.slice(5, 7)) - 1, year: Number(item.monthKey.slice(0, 4)) }); setSelectedDebt(item.debt); open("debts"); }} className={rowBtn}>
             <div className="flex min-w-0 items-center gap-3">
-              <div className={`grid size-10 shrink-0 place-items-center rounded-xl ${item.status === "hoje" ? "bg-[#f3c982]/15 text-[#f3c982]" : item.status === "atrasado" ? "bg-red-400/10 text-red-200" : "bg-white/10 text-white/70"}`}>
+              <div className={`grid size-10 shrink-0 place-items-center rounded-xl ${item.status === "hoje" ? "bg-[color:var(--warning)]/15 text-[color:var(--warning)]" : item.status === "atrasado" ? "bg-[color:var(--danger)]/10 text-[color:var(--danger)]" : "bg-[color:var(--surface)] text-[color:var(--text-2)]"}`}>
                 <Icon name="bell" size={17} />
               </div>
               <div className="min-w-0 text-left">
                 <p className="truncate text-sm font-semibold">{item.debt.title}</p>
-                <p className="text-xs text-white/50">{item.kind === "lembrete" ? t("Lembrete") : t("Vencimento")} · {fmtDate(item.date)} · {fmt(item.debt.value)}</p>
+                <p className="text-xs text-[color:var(--text-3)]">{item.kind === "lembrete" ? t("Lembrete") : t("Vencimento")} · {fmtDate(item.date)} · {fmt(item.debt.value)}</p>
               </div>
             </div>
-            <span className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-bold uppercase tracking-wide ${item.status === "hoje" ? "bg-[#f3c982]/15 text-[#f3c982]" : item.status === "atrasado" ? "bg-red-400/10 text-red-200" : "bg-white/10 text-white/55"}`}>
+            <span className={`shrink-0 rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-wide ${item.status === "hoje" ? "bg-[color:var(--warning)]/15 text-[color:var(--warning)]" : item.status === "atrasado" ? "bg-[color:var(--danger)]/10 text-[color:var(--danger)]" : "bg-[color:var(--surface)] text-[color:var(--text-2)]"}`}>
               {item.status === "hoje" ? t("Hoje") : item.status === "atrasado" ? t("Atrasado") : t("Ativo")}
             </span>
           </button>
@@ -1670,36 +1738,48 @@ const AppContent = () => {
       <Header />
       {currentUser && (
         <Card className="mb-4 flex items-center gap-4">
-          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/15 text-lg font-bold" aria-hidden="true">
+          <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[color:var(--accent)]/10 text-lg font-bold text-[color:var(--accent-text)]" aria-hidden="true">
             {currentUser.name[0].toUpperCase()}
           </div>
           <div className="min-w-0">
             <p className="truncate font-semibold">{currentUser.name}</p>
-            <p className="truncate text-xs text-white/55">{currentUser.email}</p>
+            <p className="truncate text-xs text-[color:var(--text-2)]">{currentUser.email}</p>
           </div>
         </Card>
       )}
       <div className="space-y-3">
-        <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+        <div className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4">
           <p className="mb-2 text-sm font-semibold">{t("Orçamento mensal")}</p>
           <input type="number" min="1" defaultValue={budget} key={budget}
             aria-label={t("Orçamento mensal")}
             onBlur={async e => { const v = Number(e.target.value); if (v > 0) { try { await persistBudget(v); notify("Orçamento atualizado."); } catch (error) { notify(error instanceof Error ? error.message : "Erro ao atualizar orçamento.", true); } } else { e.target.value = String(budget); } }}
             className={`${inputWhite} text-lg font-semibold`} />
         </div>
-        <button onClick={async () => { const next = !darkMode; setDarkMode(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ dark_mode: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} className={rowBtn} aria-pressed={darkMode}>
+        <button onClick={async () => { const next = !darkMode; setDarkMode(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ dark_mode: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} className={rowBtn} role="switch" aria-checked={darkMode}>
           <div className="flex items-center gap-3">
             <Icon name={darkMode ? "sun" : "moon"} size={18} />
             <div>
               <p className="text-sm font-semibold">{t("Modo escuro")}</p>
-              <p className="text-xs text-white/55">{darkMode ? t("Ativado") : t("Desativado")}</p>
+              <p className="text-xs text-[color:var(--text-2)]">{darkMode ? t("Ativado") : t("Desativado")}</p>
             </div>
           </div>
-          <div className={`relative h-6 w-11 rounded-full transition-colors duration-300 ${darkMode ? "bg-[#c8e5dd]" : "bg-white/25"}`} aria-hidden="true">
-            <span className={`absolute top-1 size-4 rounded-full bg-white shadow transition-all duration-300 ${darkMode ? "left-6" : "left-1"}`} />
+          <div className={`relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-300 ${darkMode ? "bg-[color:var(--accent)]" : "bg-[color:var(--toggle-off)]"}`} aria-hidden="true">
+            <span className={`absolute top-1 size-[22px] rounded-full bg-[color:var(--knob)] shadow transition-all duration-300 ${darkMode ? "left-[26px]" : "left-1"}`} />
           </div>
         </button>
-        <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+        <button onClick={async () => { const next = !hideBalance; setHideBalance(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ hide_balance: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} className={rowBtn} role="switch" aria-checked={hideBalance}>
+          <div className="flex items-center gap-3">
+            <Icon name="eyeOff" size={18} />
+            <div>
+              <p className="text-sm font-semibold">{t("Ocultar saldo")}</p>
+              <p className="text-xs text-[color:var(--text-2)]">{hideBalance ? t("Ativado") : t("Desativado")}</p>
+            </div>
+          </div>
+          <div className={`relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-300 ${hideBalance ? "bg-[color:var(--accent)]" : "bg-[color:var(--toggle-off)]"}`} aria-hidden="true">
+            <span className={`absolute top-1 size-[22px] rounded-full bg-[color:var(--knob)] shadow transition-all duration-300 ${hideBalance ? "left-[26px]" : "left-1"}`} />
+          </div>
+        </button>
+        <div className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4">
           <div className="mb-3 flex items-center gap-3">
             <Icon name="card" size={18} />
             <p className="text-sm font-semibold">{t("Moeda padrão")}</p>
@@ -1708,13 +1788,13 @@ const AppContent = () => {
             {(Object.entries(CURRENCIES) as [Currency, (typeof CURRENCIES)[Currency]][]).map(([k, v]) => (
               <button key={k} onClick={async () => { setCurrency(k); if (currentUser) { const { error } = await supabase.from("profiles").update({ currency: k }).eq("id", currentUser.id); if (error) { notify(error.message, true); return; } } notify(`Moeda: ${k}`); }}
                 aria-pressed={currency === k}
-                className={`flex-1 rounded-xl py-2.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${currency === k ? "bg-white text-[#203d4f]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>
+                className={`min-h-11 flex-1 rounded-xl py-2.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${currency === k ? "bg-[color:var(--accent)] font-bold text-[color:var(--on-accent)]" : "border border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--text-2)] hover:bg-[color:var(--text)]/10"}`}>
                 {v.symbol} {k}
               </button>
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+        <div className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4">
           <div className="mb-3 flex items-center gap-3">
             <Icon name="globe" size={18} />
             <p className="text-sm font-semibold">{t("Idioma")}</p>
@@ -1723,7 +1803,7 @@ const AppContent = () => {
             {(["pt-BR", "en-US", "es-ES"] as Language[]).map(k => (
               <button key={k} onClick={async () => { setLanguage(k); localStorage.setItem("aoshiro_language", k); if (currentUser) { const { error } = await supabase.from("profiles").update({ language: k }).eq("id", currentUser.id); if (error) notify(error.message, true); } }}
                 aria-pressed={language === k}
-                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${language === k ? "bg-white text-[#203d4f]" : "bg-white/10 text-white/65 hover:bg-white/20"}`}>
+                className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${language === k ? "bg-[color:var(--accent)] font-semibold text-[color:var(--on-accent)]" : "border border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--text-2)] hover:bg-[color:var(--text)]/10"}`}>
                 {t(k === "pt-BR" ? "Português (Brasil)" : k === "en-US" ? "English (US)" : "Español")}
                 {language === k && <Icon name="check" size={15} />}
               </button>
@@ -1736,7 +1816,7 @@ const AppContent = () => {
               <Icon name={ic} size={18} />
               <div>
                 <p className="text-sm font-semibold">{t(a)}</p>
-                <p className="text-xs text-white/55">{t(b)}</p>
+                <p className="text-xs text-[color:var(--text-2)]">{t(b)}</p>
               </div>
             </div>
             <Icon name="arrow" size={16} />
@@ -1756,20 +1836,20 @@ const AppContent = () => {
     content = (
       <>
         <Header backTo="debts" />
-        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[#f3c982]/25 bg-[#f3c982]/10 px-4 py-3">
+        <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[color:var(--warning)]/50 bg-[color:var(--surface)] px-4 py-3">
           <span className="mt-0.5 text-base" aria-hidden="true">ℹ️</span>
-          <p className="text-xs leading-relaxed text-[#f3c982]/90">{t("Esta tela é apenas para")}<strong>{t("registrar")}</strong> {t("como o pagamento foi feito. Nenhuma cobrança ou transferência é realizada aqui.")}
+          <p className="text-xs leading-relaxed text-[color:var(--warning)]">{t("Esta tela é apenas para")}<strong>{t("registrar")}</strong> {t("como o pagamento foi feito. Nenhuma cobrança ou transferência é realizada aqui.")}
           </p>
         </div>
 
         <Card className="mb-4">
           <p className={sectionLabel}>{t("Dívida selecionada")}</p>
           <h2 className="mt-2 text-xl font-semibold">{selectedDebt?.title}</h2>
-          <p className="mt-1 text-3xl font-semibold tracking-tight text-[#c8e5dd]">{selectedDebt && fmt(selectedDebt.value)}</p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight text-[color:var(--accent-text)]">{selectedDebt && fmt(selectedDebt.value)}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-xl bg-white/10 px-3 py-1 text-xs text-white/55">{selectedDebt?.category}</span>
-            <span className="rounded-xl bg-white/10 px-3 py-1 text-xs text-white/55">{t("Vence")} {fmtDate(selectedDebt?.due ?? "")}</span>
-            {selectedDebt?.reminder && <span className="rounded-xl bg-white/10 px-3 py-1 text-xs text-white/55">🔔 {fmtDate(selectedDebt.reminder)}</span>}
+            <span className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-1 text-xs text-[color:var(--text-2)]">{selectedDebt?.category}</span>
+            <span className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-1 text-xs text-[color:var(--text-2)]">{t("Vence")} {fmtDate(selectedDebt?.due ?? "")}</span>
+            {selectedDebt?.reminder && <span className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-2)] px-3 py-1 text-xs text-[color:var(--text-2)]">🔔 {fmtDate(selectedDebt.reminder)}</span>}
           </div>
         </Card>
 
@@ -1780,14 +1860,14 @@ const AppContent = () => {
             return (
               <button key={m.id} type="button" onClick={() => setPayMethod(m.id)}
                 role="radio" aria-checked={active}
-                className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${active ? "border-[#c8e5dd]/40 bg-[#c8e5dd]/10" : "border-white/10 bg-white/10 hover:bg-white/15"}`}>
+                className={`flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${active ? "border-[color:var(--accent)] bg-[color:var(--surface-2)] ring-1 ring-[color:var(--accent)]" : "border-[color:var(--text)]/10 bg-[color:var(--surface)] hover:bg-[color:var(--text)]/15"}`}>
                 <span className="text-2xl" aria-hidden="true">{m.emoji}</span>
                 <div className="flex-1">
-                  <p className={`text-sm font-semibold ${active ? "text-[#c8e5dd]" : "text-white"}`}>{t(m.label)}</p>
-                  <p className="text-xs text-white/50">{t(m.sub)}</p>
+                  <p className={`text-sm font-semibold ${active ? "text-[color:var(--accent-text)]" : "text-[color:var(--text)]"}`}>{t(m.label)}</p>
+                  <p className="text-xs text-[color:var(--text-3)]">{t(m.sub)}</p>
                 </div>
-                <div className={`grid size-5 place-items-center rounded-full border-2 transition ${active ? "border-[#c8e5dd] bg-[#c8e5dd]" : "border-white/30"}`} aria-hidden="true">
-                  {active && <div className="size-2 rounded-full bg-[#1d2d36]" />}
+                <div className={`grid size-5 place-items-center rounded-full border-2 transition ${active ? "border-[color:var(--accent)] bg-[color:var(--accent)]" : "border-[color:var(--field-border)]"}`} aria-hidden="true">
+                  {active && <div className="size-2 rounded-full bg-[color:var(--on-accent)]" />}
                 </div>
               </button>
             );
@@ -1819,14 +1899,14 @@ const AppContent = () => {
     <main className={`${bgClass} px-3 pb-[calc(7.25rem+env(safe-area-inset-bottom))] pt-6 min-[390px]:px-5 md:px-8 md:py-8`}>
       {showBudgetPrompt && currentUser && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="budget-prompt-title">
-          <form onSubmit={saveInitialBudget} className="w-full max-w-sm rounded-3xl border border-white/15 bg-[#294a60] p-6 shadow-2xl">
-            <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#c8e5dd]/15 text-[#c8e5dd]">
+          <form onSubmit={saveInitialBudget} className="w-full max-w-sm rounded-3xl border border-[color:var(--text)]/15 bg-[color:var(--surface)] p-6 shadow-2xl">
+            <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[color:var(--accent)]/15 text-[color:var(--accent-text)]">
               <Icon name="chart" size={24} />
             </div>
             <h2 id="budget-prompt-title" className="mt-4 text-center text-xl font-semibold">{t("Defina seu orçamento mensal")}</h2>
-            <p className="mt-2 text-center text-sm leading-relaxed text-white/60">{t("Para começar a organizar suas finanças, informe quanto você pretende gastar por mês.")}</p>
+            <p className="mt-2 text-center text-sm leading-relaxed text-[color:var(--text-2)]">{t("Para começar a organizar suas finanças, informe quanto você pretende gastar por mês.")}</p>
             <label className="mt-5 block">
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-white/60">{t("Orçamento mensal (R$)")}</span>
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("Orçamento mensal (R$)")}</span>
               <input
                 value={budgetPromptValue}
                 onChange={e => setBudgetPromptValue(e.target.value)}
