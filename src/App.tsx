@@ -941,7 +941,7 @@ const AppContent = () => {
               <span className={`grid h-8 w-14 max-w-full shrink-0 place-items-center rounded-full transition-all duration-300 md:size-9 md:rounded-xl ${isActive ? "bg-[color:var(--accent)]/15 md:bg-[color:var(--on-accent)]/[0.15]" : "group-hover:bg-[color:var(--text)]/10 md:bg-transparent md:group-hover:bg-transparent"}`}>
                 <Icon name={ic} size={20} />
               </span>
-              <span className={`block max-w-full truncate text-center text-[11px] font-semibold leading-tight md:text-left md:text-sm ${isActive ? "md:font-bold" : "md:font-medium"}`}>{lb}</span>
+              <span className={`block max-w-full truncate text-center text-[13px] font-semibold leading-tight md:text-left md:text-sm ${isActive ? "md:font-bold" : "md:font-medium"}`}>{lb}</span>
             </button>
           );
         })}
