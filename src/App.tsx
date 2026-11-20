@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createTranslator, getMonthNames, type Language } from "./i18n";
 import type { Currency } from "./types";
 import { supabase, supabaseConfigured } from "./lib/supabaseClient";
@@ -6,7 +6,7 @@ import { supabase, supabaseConfigured } from "./lib/supabaseClient";
 type View =
   | "login" | "register" | "forgot"
   | "home" | "debts" | "categories" | "history" | "budget" | "settings" | "payment"
-  | "simulation" | "goals" | "catEditor" | "notifications";
+  | "simulation" | "goals" | "catEditor" | "notifications" | "help";
 
 type Debt = {
   id: number;
@@ -138,6 +138,11 @@ const Icon = ({ name, size = 19 }: { name: string; size?: number }) => {
     alert: "M12 8v5m0 3h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z",
     clock: "M12 7v5l3 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z",
     warn: "M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z",
+    help: "M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z",
+    play: "M8 5v14l11-7L8 5Z",
+    close: "M18 6 6 18M6 6l12 12",
+    chev: "m6 9 6 6 6-6",
+    sparkle: "M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M6.3 17.7l2.5-2.5M15.2 8.8l2.5-2.5",
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -168,6 +173,207 @@ const FieldIcon = ({ icon, children }: { icon: string; children: React.ReactNode
     {children}
   </div>
 );
+
+// ===== RF024: tutoriais interativos =====
+// Cada passo aponta para um elemento marcado com data-tour="<alvo>" na tela da sua view.
+// Os textos são chaves do i18n (pt-BR); a tradução acontece na hora de exibir.
+type TourId = "welcome" | "debts" | "categories" | "goals" | "simulation";
+type TourStep = { target: string; title: string; body: string };
+const TOURS: Record<TourId, { view: View; name: string; steps: TourStep[] }> = {
+  welcome: {
+    view: "home", name: "Conhecendo o Aoshiro", steps: [
+      { target: "balance", title: "Este é o seu saldo do mês", body: "Mostra quanto do orçamento ainda está livre: o orçamento menos as dívidas pagas e o que você reservou em metas. Toque no olho para escondê-lo." },
+      { target: "month-nav", title: "Cada mês tem seu orçamento", body: "Use as setas para ver meses anteriores ou planejar os próximos. Ao abrir um mês novo, o Aoshiro oferece copiar as dívidas que ficaram em aberto." },
+      { target: "add-debt", title: "Cadastre suas contas", body: "Toque aqui para adicionar uma dívida com valor, vencimento, categoria e um lembrete opcional." },
+      { target: "nav", title: "Tudo a um toque", body: "Use a barra para ir até Dívidas, Categorias e Histórico." },
+      { target: "settings", title: "Ajustes e ajuda", body: "Aqui você muda tema, moeda, idioma e orçamento. Os tutoriais ficam em Ajustes › Tutoriais e ajuda, para rever quando quiser." },
+    ],
+  },
+  debts: {
+    view: "debts", name: "Dívidas e pagamentos", steps: [
+      { target: "debts-add", title: "Nova dívida", body: "Adicione as contas do mês selecionado na tela inicial." },
+      { target: "debts-search", title: "Encontre rápido", body: "Busque uma dívida pelo nome." },
+      { target: "debts-filters", title: "Filtre a lista", body: "Veja só as dívidas em aberto ou pagas, e as que vencem hoje ou nesta semana." },
+      { target: "debts-list", title: "Registre pagamentos", body: "Toque em PAGAR quando quitar uma conta. O valor passa a descontar do saldo disponível e vai para o Histórico." },
+    ],
+  },
+  categories: {
+    view: "categories", name: "Categorias e limites", steps: [
+      { target: "cat-add", title: "Crie categorias", body: "Organize os gastos em grupos, como Moradia ou Saúde, e defina um limite para cada um." },
+      { target: "cat-period", title: "Escolha o período", body: "Veja os gastos do mês inteiro, só de hoje ou desta semana." },
+      { target: "cat-list", title: "Acompanhe os limites", body: "A barra mostra quanto de cada limite já foi usado, somando dívidas pagas e em aberto. Toque numa categoria para editá-la." },
+    ],
+  },
+  goals: {
+    view: "goals", name: "Metas e reservas", steps: [
+      { target: "goals-form", title: "Crie uma meta", body: "Dê um nome e um valor alvo, como uma viagem ou uma reserva de emergência." },
+      { target: "goals-list", title: "Reserve dinheiro", body: "Use Depositar / Resgatar para separar parte do saldo do mês. O valor reservado sai do saldo disponível e soma ao progresso da meta." },
+    ],
+  },
+  simulation: {
+    view: "simulation", name: "Simulação de juros", steps: [
+      { target: "sim-about", title: "Juros compostos", body: "Os juros de cada mês entram no cálculo do mês seguinte. O resultado mostra os juros acumulados e o montante final." },
+      { target: "sim-form", title: "Informe os dados", body: "Digite o valor inicial, a taxa de juros mensal e o prazo em meses, depois toque em Calcular." },
+    ],
+  },
+};
+const TOUR_IDS = Object.keys(TOURS) as TourId[];
+const DEFAULT_CATEGORY_NAMES = ["Alimentação", "Transporte", "Lazer e diversão", "Lazer & diversão"];
+
+// Progresso salvo por usuário neste navegador (não exige mudança no banco).
+type TutorialState = { seen: Partial<Record<TourId, boolean>>; tips: Partial<Record<TourId, boolean>>; checklistHidden: boolean };
+const EMPTY_TUTORIALS: TutorialState = { seen: {}, tips: {}, checklistHidden: false };
+const tutorialsKey = (userId: string) => `aoshiro_tutorials_${userId}`;
+const loadTutorials = (userId: string): TutorialState => {
+  try {
+    const raw = localStorage.getItem(tutorialsKey(userId));
+    if (!raw) return EMPTY_TUTORIALS;
+    const parsed = JSON.parse(raw);
+    return { seen: parsed.seen ?? {}, tips: parsed.tips ?? {}, checklistHidden: Boolean(parsed.checklistHidden) };
+  } catch {
+    return EMPTY_TUTORIALS;
+  }
+};
+
+type Box = { top: number; left: number; width: number; height: number; radius: number };
+const prefersReducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+// Escurece a tela, "recorta" o elemento do passo e mostra o balão ao lado dele.
+const TourOverlay = ({ step, index, total, onNext, onBack, onSkip, labels }: {
+  step: { target: string; title: string; body: string };
+  index: number;
+  total: number;
+  onNext: () => void;
+  onBack: () => void;
+  onSkip: () => void;
+  labels: { step: string; next: string; back: string; skip: string; finish: string };
+}) => {
+  const [target, setTarget] = useState<Box | null>(null);
+  const [cardH, setCardH] = useState(0);
+  const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
+  const cardRef = useRef<HTMLDivElement>(null);
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  const isLast = index === total - 1;
+
+  // Devolve o foco para onde estava quando o tour fechar.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    return () => previous?.focus?.();
+  }, []);
+
+  useEffect(() => {
+    let scrolled = false;
+    const measure = () => {
+      setViewport(v => (v.w === window.innerWidth && v.h === window.innerHeight ? v : { w: window.innerWidth, h: window.innerHeight }));
+      const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
+      if (!el) { setTarget(null); return; }
+      if (!scrolled) {
+        el.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+        scrolled = true;
+      }
+      const r = el.getBoundingClientRect();
+      const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 16;
+      setTarget(prev => (prev && prev.top === r.top && prev.left === r.left && prev.width === r.width && prev.height === r.height
+        ? prev : { top: r.top, left: r.left, width: r.width, height: r.height, radius }));
+    };
+    measure();
+    // As telas são re-renderizadas com frequência; medir periodicamente mantém o recorte no lugar.
+    const timer = window.setInterval(measure, 200);
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [step.target]);
+
+  useLayoutEffect(() => {
+    const h = cardRef.current?.offsetHeight ?? 0;
+    if (h !== cardH) setCardH(h);
+  });
+
+  useEffect(() => { primaryRef.current?.focus(); }, [index]);
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") { e.preventDefault(); onSkip(); return; }
+    if (e.key !== "Tab" || !cardRef.current) return;
+    const items = Array.from(cardRef.current.querySelectorAll<HTMLElement>("button"));
+    if (items.length === 0) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+
+  const margin = 16, gap = 14, pad = 6;
+  const cardW = Math.min(360, viewport.w - margin * 2);
+  let hole: Box | null = null;
+  let cardTop = (viewport.h - cardH) / 2;
+  let cardLeft = (viewport.w - cardW) / 2;
+  let arrow: { side: "top" | "bottom"; x: number } | null = null;
+
+  if (target) {
+    const top = Math.max(8, target.top - pad);
+    const bottom = Math.min(viewport.h - 8, target.top + target.height + pad);
+    hole = { top, left: target.left - pad, width: target.width + pad * 2, height: Math.max(0, bottom - top), radius: target.radius + pad };
+    const spaceBelow = viewport.h - bottom;
+    const spaceAbove = top;
+    const need = cardH + gap + margin;
+    const centerX = target.left + target.width / 2;
+    cardLeft = Math.min(Math.max(centerX - cardW / 2, margin), viewport.w - cardW - margin);
+    const arrowX = Math.min(Math.max(centerX - cardLeft - 7, 20), cardW - 34);
+    if (spaceBelow >= need) { cardTop = bottom + gap; arrow = { side: "top", x: arrowX }; }
+    else if (spaceAbove >= need) { cardTop = top - gap - cardH; arrow = { side: "bottom", x: arrowX }; }
+    else { cardTop = viewport.h - cardH - margin; }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80]" onKeyDown={onKeyDown}>
+      {/* Camada que bloqueia toques no app enquanto o tour está aberto */}
+      <div className="absolute inset-0" aria-hidden="true" />
+      {hole ? (
+        <div aria-hidden="true"
+          className="pointer-events-none fixed outline outline-2 outline-offset-2 outline-[#A5CFF8]/90 transition-all duration-300 motion-reduce:transition-none"
+          style={{ top: hole.top, left: hole.left, width: hole.width, height: hole.height, borderRadius: hole.radius, boxShadow: "0 0 0 9999px rgba(6, 24, 43, 0.72)" }} />
+      ) : (
+        <div aria-hidden="true" className="absolute inset-0 bg-[rgba(6,24,43,0.72)]" />
+      )}
+      <div ref={cardRef} role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-body"
+        className="fixed rounded-[22px] bg-[color:var(--surface-2)] p-5 text-[color:var(--text)] shadow-[0_20px_40px_rgba(6,24,43,0.35)] transition-[top,left] duration-300 motion-reduce:transition-none"
+        style={{ top: Math.max(margin, cardTop), left: cardLeft, width: cardW }}>
+        {arrow && (
+          <span aria-hidden="true" className="absolute size-3.5 rotate-45 rounded-[3px] bg-[color:var(--surface-2)]"
+            style={{ left: arrow.x, ...(arrow.side === "top" ? { top: -7 } : { bottom: -7 }) }} />
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-bold text-[color:var(--accent-text)]">{labels.step}</span>
+          {!isLast && (
+            <button type="button" onClick={onSkip}
+              className="rounded-lg px-1 py-1.5 text-sm font-semibold text-[color:var(--text-2)] transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{labels.skip}</button>
+          )}
+        </div>
+        <h2 id="tour-title" className="mt-1.5 text-lg font-semibold">{step.title}</h2>
+        <p id="tour-body" aria-live="polite" className="mt-1.5 text-sm leading-relaxed text-[color:var(--text-2)]">{step.body}</p>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            {Array.from({ length: total }, (_, i) => (
+              <span key={i} className={`h-1.5 rounded-full transition-all motion-reduce:transition-none ${i === index ? "w-[18px] bg-[color:var(--accent)]" : "w-1.5 bg-[color:var(--text)]/20"}`} />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            {index > 0 && (
+              <button type="button" onClick={onBack}
+                className="h-11 rounded-[14px] border border-[color:var(--field-border)] px-4 text-sm font-semibold transition hover:bg-[color:var(--text)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{labels.back}</button>
+            )}
+            <button ref={primaryRef} type="button" onClick={onNext}
+              className="h-11 rounded-[14px] bg-[color:var(--accent)] px-5 text-sm font-bold text-[color:var(--on-accent)] transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-2)]">{isLast ? labels.finish : labels.next}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const SupabaseConfigMessage = () => (
   <main className="theme-dark min-h-screen bg-[color:var(--bg)] p-6 text-[color:var(--text)]">
@@ -253,6 +459,11 @@ const AppContent = () => {
   // Rascunho do orçamento em Ajustes: null = sem edição (mostra o valor salvo).
   const [budgetDraft, setBudgetDraft] = useState<string | null>(null);
   const [budgetSaving, setBudgetSaving] = useState(false);
+  // RF024: tutoriais
+  const [tutorials, setTutorials] = useState<TutorialState>(EMPTY_TUTORIALS);
+  const [tutorialsReady, setTutorialsReady] = useState(false);
+  const [activeTour, setActiveTour] = useState<{ id: TourId; step: number } | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const monthKey = mkKey(activeMonth.month, activeMonth.year);
   const debts = monthData[monthKey]?.debts ?? [];
@@ -509,6 +720,51 @@ const AppContent = () => {
   };
   const open = (next: View) => { setView(next); setQuery(""); setBudgetDraft(null); };
   useEffect(() => { localStorage.setItem("aoshiro_language", language); }, [language]);
+
+  // ----- RF024: tutoriais interativos -----
+  useEffect(() => {
+    if (!currentUser) { setTutorialsReady(false); setActiveTour(null); return; }
+    setTutorials(loadTutorials(currentUser.id));
+    setTutorialsReady(true);
+  }, [currentUser?.id]);
+
+  const updateTutorials = (change: (prev: TutorialState) => TutorialState) => {
+    setTutorials(prev => {
+      const next = change(prev);
+      if (currentUser) {
+        try { localStorage.setItem(tutorialsKey(currentUser.id), JSON.stringify(next)); } catch { /* navegador sem storage */ }
+      }
+      return next;
+    });
+  };
+
+  const startTour = (id: TourId) => {
+    updateTutorials(p => ({ ...p, tips: { ...p.tips, [id]: true } }));
+    const targetView = TOURS[id].view;
+    if (view !== targetView) {
+      open(targetView);
+      // Espera a tela nova aparecer antes de procurar os elementos do tour.
+      window.setTimeout(() => setActiveTour({ id, step: 0 }), 150);
+    } else {
+      setActiveTour({ id, step: 0 });
+    }
+  };
+
+  const endTour = () => {
+    if (activeTour) updateTutorials(p => ({ ...p, seen: { ...p.seen, [activeTour.id]: true } }));
+    setActiveTour(null);
+  };
+
+  // Tour de boas-vindas: abre sozinho uma única vez, depois que o orçamento inicial foi definido.
+  useEffect(() => {
+    if (view !== "home" || !currentUser || dataLoading || showBudgetPrompt || !tutorialsReady || activeTour || tutorials.seen.welcome) return;
+    const timer = window.setTimeout(() => setActiveTour({ id: "welcome", step: 0 }), 600);
+    return () => window.clearTimeout(timer);
+  }, [view, currentUser, dataLoading, showBudgetPrompt, tutorialsReady, activeTour, tutorials.seen.welcome]);
+
+  const viewTour = TOUR_IDS.find(id => id !== "welcome" && TOURS[id].view === view);
+  const showFirstVisitTip = Boolean(viewTour && tutorialsReady && !activeTour && !tutorials.tips[viewTour] && !tutorials.seen[viewTour]);
+  const allDebts = Object.values(monthData).flatMap(m => m.debts);
 
   const totalPaid = debts.filter(d => d.paid).reduce((s, d) => s + d.value, 0);
   const totalOpen = debts.filter(d => !d.paid).reduce((s, d) => s + d.value, 0);
@@ -768,6 +1024,7 @@ const AppContent = () => {
     home: "Visão geral", debts: "Dívidas", categories: "Categorias",
     history: "Histórico", budget: "Nova dívida", settings: "Ajustes", notifications: "Notificações",
     payment: "Registrar pagamento", simulation: "Simulação", goals: "Metas", catEditor: "Categorias",
+    help: "Tutoriais e ajuda",
   };
 
   const authInput = "w-full bg-transparent py-3.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--placeholder)] outline-none";
@@ -929,7 +1186,7 @@ const AppContent = () => {
           (pílula de largura fixa), então o texto nunca fica maior que o destaque, em
           nenhum idioma. O peso da fonte não muda ao ativar, para o rótulo não "pular".
           Computador (md): mantém a barra lateral com o item ativo preenchido. */}
-      <div className="grid grid-cols-4 gap-0.5 rounded-[26px] border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-1.5 shadow-xl backdrop-blur-2xl md:flex md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
+      <div data-tour="nav" className="grid grid-cols-4 gap-0.5 rounded-[26px] border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-1.5 shadow-xl backdrop-blur-2xl md:flex md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
         {navItems.map(([id, ic, lb]) => {
           const isActive = view === id;
           return (
@@ -953,7 +1210,7 @@ const AppContent = () => {
   );
 
   const MonthNav = () => (
-    <div className="flex items-center gap-0.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1" aria-label={t("Navegar entre meses")}>
+    <div data-tour="month-nav" className="flex items-center gap-0.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1" aria-label={t("Navegar entre meses")}>
       <button onClick={goToPrev} aria-label={t("Mês anterior")}
         className="grid size-11 place-items-center rounded-xl transition hover:bg-[color:var(--text)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
         <Icon name="back" size={15} />
@@ -1031,9 +1288,25 @@ const AppContent = () => {
           <p className={sectionLabel}>Aoshiro</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">{pageTitle[view] ? t(pageTitle[view]) : ""}</h1>
         </div>
-        <div className="flex shrink-0 items-center gap-2 pt-1">
+        <div className="relative flex shrink-0 items-center gap-2 pt-1">
           {view === "home" && <MonthNav />}
           {action}
+          {viewTour && (
+            <button type="button" onClick={() => startTour(viewTour)} aria-label={t("Como usar esta tela")} title={t("Como usar esta tela")}
+              className={`${iconBtn} border border-[color:var(--text)]/15 bg-[color:var(--surface)] text-[color:var(--accent-text)] hover:bg-[color:var(--text)]/15`}>
+              <Icon name="help" size={20} />
+            </button>
+          )}
+          {viewTour && showFirstVisitTip && (
+            <div role="status" className="absolute right-0 top-full z-30 mt-3 w-64 rounded-2xl bg-[color:var(--toast)] p-4 text-white shadow-2xl">
+              <span aria-hidden="true" className="absolute -top-1.5 right-4 size-3 rotate-45 rounded-sm bg-[color:var(--toast)]" />
+              <p className="text-sm leading-relaxed">{t("Primeira vez aqui? Toque em")} <strong>?</strong> {t("para um guia rápido desta tela.")}</p>
+              <div className="mt-2 flex gap-4">
+                <button type="button" onClick={() => startTour(viewTour)} className="rounded py-1 text-sm font-bold text-[#A5CFF8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A5CFF8]">{t("Ver guia")}</button>
+                <button type="button" onClick={() => updateTutorials(p => ({ ...p, tips: { ...p.tips, [viewTour]: true } }))} className="rounded py-1 text-sm font-semibold text-white/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A5CFF8]">{t("Agora não")}</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>
@@ -1062,7 +1335,7 @@ const AppContent = () => {
   if (view === "home") content = (
     <>
       <Header action={
-        <button onClick={() => open("settings")} aria-label={t("Abrir ajustes")}
+        <button data-tour="settings" onClick={() => open("settings")} aria-label={t("Abrir ajustes")}
           className={`${iconBtn} border border-[color:var(--text)]/15 bg-[color:var(--surface)] hover:bg-[color:var(--text)]/20`}>
           <Icon name="gear" />
         </button>
@@ -1070,6 +1343,7 @@ const AppContent = () => {
       <CopyPrompt />
 
 
+      <div data-tour="balance" className="rounded-3xl">
       <Card className="relative overflow-hidden bg-[color:var(--surface-2)]!">
         <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-[color:var(--accent)]/20 blur-2xl" />
         <div className="relative flex items-center justify-between">
@@ -1103,6 +1377,71 @@ const AppContent = () => {
           )}
         </div>
       </Card>
+      </div>
+
+      {tutorialsReady && !tutorials.checklistHidden && (() => {
+        const items = [
+          { id: "budget", label: "Definir o orçamento do mês", done: Object.values(monthData).some(m => m.budget > 0), go: () => open("settings") },
+          { id: "debt", label: "Adicionar sua primeira dívida", done: allDebts.length > 0, go: () => open("budget") },
+          { id: "paid", label: "Registrar um pagamento", done: allDebts.some(d => d.paid), go: () => (tutorials.seen.debts ? open("debts") : startTour("debts")) },
+          { id: "category", label: "Criar uma categoria", done: categories.some(c => !DEFAULT_CATEGORY_NAMES.includes(c.name)), go: () => open("catEditor") },
+          { id: "goal", label: "Criar uma meta de economia", done: goals.length > 0, go: () => open("goals") },
+        ];
+        const doneCount = items.filter(i => i.done).length;
+        const nextId = items.find(i => !i.done)?.id;
+        const hide = () => { updateTutorials(p => ({ ...p, checklistHidden: true })); notify("Você pode reexibir em Ajustes › Tutoriais e ajuda."); };
+        return (
+          <section aria-labelledby="checklist-title" className={`${card} mt-4`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[color:var(--accent)]/15 text-[color:var(--accent-text)]" aria-hidden="true"><Icon name="sparkle" size={20} /></span>
+                <div>
+                  <h2 id="checklist-title" className="text-base font-semibold">{doneCount === items.length ? t("Tudo pronto!") : t("Primeiros passos")}</h2>
+                  <p className="mt-0.5 text-xs text-[color:var(--text-2)]">{doneCount === items.length ? t("Você já conhece o essencial do Aoshiro.") : `${doneCount} ${t("de")} ${items.length} ${t("concluídos")}`}</p>
+                </div>
+              </div>
+              <button type="button" onClick={hide} aria-label={t("Ocultar primeiros passos")}
+                className="-m-1 grid size-10 shrink-0 place-items-center rounded-xl text-[color:var(--text-2)] transition hover:bg-[color:var(--text)]/10 hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+            <div className="mt-4 mb-2 h-1.5 overflow-hidden rounded-full bg-[color:var(--track)]">
+              <div className="h-full rounded-full bg-[color:var(--accent)] transition-all duration-500 motion-reduce:transition-none" style={{ width: `${(doneCount / items.length) * 100}%` }}
+                role="progressbar" aria-valuenow={doneCount} aria-valuemin={0} aria-valuemax={items.length} aria-label={t("Primeiros passos")} />
+            </div>
+            {doneCount === items.length ? (
+              <button type="button" onClick={hide} className={`mt-3 ${btnAccent}`}>{t("Fechar")}</button>
+            ) : (
+              <ul className="space-y-0.5">
+                {items.map(item => (
+                  <li key={item.id}>
+                    {item.done ? (
+                      <div className="flex min-h-11 items-center gap-3 px-1">
+                        <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-[color:var(--positive)] text-white" aria-hidden="true"><Icon name="check" size={14} /></span>
+                        <span className="text-sm text-[color:var(--text-3)] line-through">{t(item.label)}</span>
+                        <span className="sr-only">{t("concluído")}</span>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={item.go}
+                        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${item.id === nextId ? "my-1 min-h-[52px] border border-[color:var(--accent)]/35 bg-[color:var(--accent)]/10 px-3" : "px-1 hover:bg-[color:var(--text)]/5"}`}>
+                        <span className="flex items-center gap-3">
+                          <span className={`grid size-[26px] shrink-0 place-items-center`} aria-hidden="true">
+                            <span className={`size-[22px] rounded-full border-2 ${item.id === nextId ? "border-[color:var(--accent)]" : "border-[color:var(--toggle-off)]"}`} />
+                          </span>
+                          <span className={`text-sm ${item.id === nextId ? "font-semibold" : ""}`}>{t(item.label)}</span>
+                        </span>
+                        {item.id === nextId
+                          ? <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-[color:var(--accent-text)]">{t("Começar")}<Icon name="arrow" size={14} /></span>
+                          : <span className="text-[color:var(--text-3)]"><Icon name="arrow" size={14} /></span>}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })()}
 
 
       <div className="mt-4 grid grid-cols-2 gap-4">
@@ -1123,6 +1462,7 @@ const AppContent = () => {
 
 
       <button
+        data-tour="add-debt"
         onClick={() => open("budget")}
         className="mt-4 flex w-full items-center justify-between rounded-3xl border border-[color:var(--accent)]/40 bg-[color:var(--accent)] p-5 text-left text-[color:var(--on-accent)] shadow-lg shadow-black/10 transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]"
         aria-label={t("Adicionar dívida")}
@@ -1185,6 +1525,7 @@ const AppContent = () => {
     <>
       <Header action={
         <button
+          data-tour="debts-add"
           onClick={() => open("budget")}
           aria-label={t("Nova dívida")}
           className="flex items-center gap-2 rounded-2xl bg-[color:var(--accent)] px-4 py-2.5 text-xs font-bold text-[color:var(--on-accent)] shadow-sm transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]"
@@ -1194,20 +1535,18 @@ const AppContent = () => {
         </button>
       } />
       <CopyPrompt />
-      <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[color:var(--field-border)] bg-white px-4 text-[color:var(--ink)] transition focus-within:ring-2 focus-within:ring-[color:var(--focus)]">
+      <div data-tour="debts-search" className="mb-3 flex items-center gap-3 rounded-2xl border border-[color:var(--field-border)] bg-white px-4 text-[color:var(--ink)] transition focus-within:ring-2 focus-within:ring-[color:var(--focus)]">
         <Icon name="search" size={17} />
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t("Buscar dívidas")}
           aria-label={t("Buscar dívidas")}
           className="w-full bg-transparent py-3.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--placeholder)] outline-none" />
       </div>
-      <div className="mb-3">
+      <div data-tour="debts-filters" className="mb-4 space-y-3 rounded-2xl">
         <SegControl options={["all", "open", "paid"]} value={debtFilter} onChange={setDebtFilter} />
-      </div>
-      <div className="mb-4">
         <SegControl options={["all", "today", "week"]} value={periodFilter} onChange={setPeriodFilter} />
       </div>
       <p className={`mb-3 ${sectionLabel}`}>{filteredDebts.length} {t(filteredDebts.length === 1 ? "registro" : "registros")}</p>
-      <ul className="space-y-3" aria-label={t("Lista de dívidas")}>
+      <ul data-tour="debts-list" className="space-y-3 rounded-2xl" aria-label={t("Lista de dívidas")}>
         {filteredDebts.map(d => (
           <li key={d.id}>
             <Card className="flex items-center gap-3 py-4">
@@ -1228,7 +1567,18 @@ const AppContent = () => {
             </Card>
           </li>
         ))}
-        {filteredDebts.length === 0 && (
+        {filteredDebts.length === 0 && debts.length === 0 && (
+          <li className="flex flex-col items-center gap-3 rounded-3xl border-[1.5px] border-dashed border-[color:var(--toggle-off)] bg-[color:var(--surface)]/60 px-5 py-8 text-center">
+            <span className="grid size-16 place-items-center rounded-[22px] bg-[color:var(--accent)]/15 text-[color:var(--accent-text)]" aria-hidden="true"><Icon name="card" size={28} /></span>
+            <p className="mt-1 text-lg font-semibold">{t("Nenhuma dívida em")} {MONTHS[activeMonth.month]}</p>
+            <p className="text-sm leading-relaxed text-[color:var(--text-2)]">{t("Cadastre contas como aluguel, internet ou cartão. Você define o vencimento e pode receber um lembrete antes do dia.")}</p>
+            <button type="button" onClick={() => open("budget")}
+              className="mt-2 flex min-h-12 items-center gap-2 rounded-2xl bg-[color:var(--accent)] px-5 text-sm font-bold text-[color:var(--on-accent)] transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
+              <Icon name="plus" size={16} />{t("Adicionar primeira dívida")}
+            </button>
+          </li>
+        )}
+        {filteredDebts.length === 0 && debts.length > 0 && (
           <li className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-8 text-center text-sm text-[color:var(--text-3)]">{t("Nenhuma dívida encontrada.")}</li>
         )}
       </ul>
@@ -1268,6 +1618,7 @@ const AppContent = () => {
         } />
         <CopyPrompt />
         <button
+          data-tour="cat-add"
           onClick={() => open("catEditor")}
           className="mb-4 flex w-full items-center justify-between rounded-3xl border border-[color:var(--accent)]/40 bg-[color:var(--surface)] p-4 text-left transition hover:bg-[color:var(--accent)]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]"
           aria-label={t("Adicionar categoria")}
@@ -1283,11 +1634,11 @@ const AppContent = () => {
           </span>
           <Icon name="arrow" size={18} />
         </button>
-        <div className="mb-4">
+        <div data-tour="cat-period" className="mb-4 rounded-2xl">
           <SegControl options={["all", "today", "week"]} value={catPeriodFilter} onChange={setCatPeriodFilter} />
         </div>
         <p className={`mb-3 ${sectionLabel}`}>{t("Gastos por categoria")} · {periodLabel[catPeriodFilter]}</p>
-        <ul className="space-y-3">
+        <ul data-tour="cat-list" className="space-y-3 rounded-3xl">
           {[...categories, { id: -1, name: "Outros", color: "#d4b8f0", budget: 0 }].map(c => {
             const shown = spent(c.name) + open2(c.name);
             const paidAmt = spent(c.name);
@@ -1566,7 +1917,7 @@ const AppContent = () => {
         );
       })()}
 
-      <ul className="mb-4 space-y-3" aria-label={t("Lista de metas")}>
+      <ul data-tour="goals-list" className="mb-4 space-y-3 rounded-3xl" aria-label={t("Lista de metas")}>
         {goals.map(g => {
           const accumulated = goalTotal(g);
           const monthReserved = goalDeposits[g.id]?.[monthKey] ?? 0;
@@ -1609,7 +1960,15 @@ const AppContent = () => {
           );
         })}
         {goals.length === 0 && (
-          <li className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-8 text-center text-sm text-[color:var(--text-3)]">{t("Nenhuma meta criada ainda.")}</li>
+          <li className="flex flex-col items-center gap-3 rounded-3xl border-[1.5px] border-dashed border-[color:var(--toggle-off)] bg-[color:var(--surface)]/60 px-5 py-8 text-center">
+            <span className="grid size-16 place-items-center rounded-[22px] bg-[color:var(--accent)]/15 text-[color:var(--accent-text)]" aria-hidden="true"><Icon name="target" size={28} /></span>
+            <p className="mt-1 text-lg font-semibold">{t("Nenhuma meta criada ainda.")}</p>
+            <p className="text-sm leading-relaxed text-[color:var(--text-2)]">{t("Metas ajudam a juntar dinheiro para algo importante, como uma viagem ou uma reserva de emergência.")}</p>
+            <button type="button" onClick={() => { const el = document.getElementById("goal-label"); el?.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" }); el?.focus({ preventScroll: true }); }}
+              className="mt-2 flex min-h-12 items-center gap-2 rounded-2xl bg-[color:var(--accent)] px-5 text-sm font-bold text-[color:var(--on-accent)] transition hover:bg-[color:var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
+              <Icon name="plus" size={16} />{t("Criar primeira meta")}
+            </button>
+          </li>
         )}
       </ul>
 
@@ -1622,9 +1981,9 @@ const AppContent = () => {
         </Card>
       )}
 
-      <form onSubmit={addGoal} className={`${card} space-y-3`} aria-label={t("Criar nova meta")}>
+      <form data-tour="goals-form" onSubmit={addGoal} className={`${card} space-y-3`} aria-label={t("Criar nova meta")}>
         <p className="text-sm font-semibold">{t("Nova meta")}</p>
-        <input value={newGoalLabel} onChange={e => setNewGoalLabel(e.target.value)} placeholder={t("Descrição")} aria-label={t("Descrição da meta")} className={inputWhite} />
+        <input id="goal-label" value={newGoalLabel} onChange={e => setNewGoalLabel(e.target.value)} placeholder={t("Descrição")} aria-label={t("Descrição da meta")} className={inputWhite} />
         <input value={newGoalTarget} onChange={e => setNewGoalTarget(e.target.value)} type="number" min="1" step="0.01" placeholder={t("Valor alvo (R$)")} aria-label={t("Valor alvo")} className={inputWhite} />
         <button type="submit" className={btnAccent}>{t("Criar meta")}</button>
       </form>
@@ -1634,11 +1993,13 @@ const AppContent = () => {
   else if (view === "simulation") content = (
     <>
       <Header />
-      <Card className="mb-4">
+      <div data-tour="sim-about" className="mb-4 rounded-3xl">
+      <Card>
         <p className={`${sectionLabel} mb-1`}>{t("Como funciona")}</p>
         <p className="text-sm leading-relaxed text-[color:var(--text-2)]">{t("Calcule o montante final de um valor aplicado com juros compostos mensais.")}</p>
       </Card>
-      <form onSubmit={runSim} className={`${card} space-y-4`} aria-label={t("Parâmetros da simulação")}>
+      </div>
+      <form data-tour="sim-form" onSubmit={runSim} className={`${card} space-y-4`} aria-label={t("Parâmetros da simulação")}>
         <p className="text-sm font-semibold">{t("Parâmetros")}</p>
         {[
           { label: t("Valor inicial (R$)"), val: simPrincipal, set: setSimPrincipal, ph: t("Ex.: 1000"), min: "0.01", step: "0.01" },
@@ -1738,6 +2099,74 @@ const AppContent = () => {
       </div>
     </>
   );
+
+  else if (view === "help") {
+    const faqs = [
+      { q: "Como o saldo disponível é calculado?", a: "É o orçamento do mês menos as dívidas que você já pagou e o que você reservou em metas. Dívidas em aberto não descontam do saldo; elas aparecem na barra de progresso como parte do orçamento." },
+      { q: "O que acontece quando reservo dinheiro numa meta?", a: "O valor sai do saldo disponível do mês em que foi reservado e soma ao progresso da meta. Se precisar, você pode resgatar o que reservou naquele mês." },
+      { q: "Por que o app oferece copiar dívidas ao mudar de mês?", a: "Ao abrir um mês que ainda não tem dados, o Aoshiro mostra as dívidas que ficaram em aberto no mês anterior e oferece copiá-las, com o vencimento um mês à frente. Você também pode começar do zero." },
+      { q: "Como funcionam os lembretes?", a: "Ao cadastrar uma dívida, você pode escolher uma data de lembrete até o dia do vencimento. Com as notificações ativadas em Ajustes › Notificações, o navegador avisa no dia." },
+      { q: "Cada mês tem um orçamento diferente?", a: "Sim. O orçamento é salvo por mês. Em Ajustes você altera o orçamento do mês selecionado na tela inicial." },
+    ];
+    content = (
+      <>
+        <Header backTo="settings" />
+        <p className={`${sectionLabel} mb-3`}>{t("Tutoriais")}</p>
+        <ul className="mb-6 space-y-2">
+          {TOUR_IDS.map(id => (
+            <li key={id}>
+              <button type="button" onClick={() => startTour(id)} className={rowBtn}>
+                <span className="flex items-center gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[color:var(--accent)]/15 text-[color:var(--accent-text)]" aria-hidden="true"><Icon name="play" size={14} /></span>
+                  <span>
+                    <span className="block text-sm font-semibold">{t(TOURS[id].name)}</span>
+                    <span className="mt-0.5 block text-xs text-[color:var(--text-2)]">{TOURS[id].steps.length} {t("passos")}</span>
+                  </span>
+                </span>
+                {tutorials.seen[id]
+                  ? <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-[color:var(--positive)]"><Icon name="check" size={13} />{t("Visto")}</span>
+                  : <Icon name="arrow" size={16} />}
+              </button>
+            </li>
+          ))}
+          {tutorials.checklistHidden && (
+            <li>
+              <button type="button" onClick={() => { updateTutorials(p => ({ ...p, checklistHidden: false })); open("home"); }} className={rowBtn}>
+                <span className="flex items-center gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[color:var(--accent)]/15 text-[color:var(--accent-text)]" aria-hidden="true"><Icon name="sparkle" size={16} /></span>
+                  <span>
+                    <span className="block text-sm font-semibold">{t("Mostrar Primeiros passos")}</span>
+                    <span className="mt-0.5 block text-xs text-[color:var(--text-2)]">{t("Volta a exibir a lista na tela inicial")}</span>
+                  </span>
+                </span>
+                <Icon name="arrow" size={16} />
+              </button>
+            </li>
+          )}
+        </ul>
+        <p className={`${sectionLabel} mb-3`}>{t("Perguntas frequentes")}</p>
+        <ul className="space-y-2">
+          {faqs.map((f, i) => {
+            const expanded = openFaq === i;
+            return (
+              <li key={f.q} className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)]">
+                <h3>
+                  <button type="button" onClick={() => setOpenFaq(expanded ? null : i)} aria-expanded={expanded} aria-controls={`faq-${i}`} id={`faq-q-${i}`}
+                    className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left text-sm font-semibold transition hover:bg-[color:var(--text)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
+                    {t(f.q)}
+                    <span className={`shrink-0 transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}><Icon name="chev" size={16} /></span>
+                  </button>
+                </h3>
+                {expanded && (
+                  <p id={`faq-${i}`} role="region" aria-labelledby={`faq-q-${i}`} className="px-4 pb-4 text-sm leading-relaxed text-[color:var(--text-2)]">{t(f.a)}</p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </>
+    );
+  }
 
   else if (view === "settings") content = (
     <>
@@ -1845,8 +2274,8 @@ const AppContent = () => {
             ))}
           </div>
         </div>
-        {([["bell", "Notificações", "Lembretes de vencimento"], ["user", "Suporte", "Falar com a equipe"]] as const).map(([ic, a, b]) => (
-          <button key={a} onClick={() => a === "Notificações" ? open("notifications") : notify(`${t(a)}: ${t("em breve.")}`)} className={rowBtn}>
+        {([["help", "Tutoriais e ajuda", "Guias passo a passo e perguntas frequentes"], ["bell", "Notificações", "Lembretes de vencimento"], ["user", "Suporte", "Falar com a equipe"]] as const).map(([ic, a, b]) => (
+          <button key={a} onClick={() => a === "Notificações" ? open("notifications") : a === "Tutoriais e ajuda" ? open("help") : notify(`${t(a)}: ${t("em breve.")}`)} className={rowBtn}>
             <div className="flex items-center gap-3">
               <Icon name={ic} size={18} />
               <div>
@@ -1963,6 +2392,23 @@ const AppContent = () => {
         <section className="min-w-0" aria-label={pageTitle[view]}>{content}</section>
       </div>
       <Toast />
+      {activeTour && (() => {
+        const tour = TOURS[activeTour.id];
+        const current = tour.steps[activeTour.step];
+        if (!current) return null;
+        return (
+          <TourOverlay
+            key={activeTour.id}
+            step={{ target: current.target, title: t(current.title), body: t(current.body) }}
+            index={activeTour.step}
+            total={tour.steps.length}
+            onNext={() => (activeTour.step + 1 < tour.steps.length ? setActiveTour({ ...activeTour, step: activeTour.step + 1 }) : endTour())}
+            onBack={() => setActiveTour({ ...activeTour, step: Math.max(0, activeTour.step - 1) })}
+            onSkip={endTour}
+            labels={{ step: `${t("Passo")} ${activeTour.step + 1} ${t("de")} ${tour.steps.length}`, next: t("Próximo"), back: t("Voltar"), skip: t("Pular tour"), finish: t("Concluir") }}
+          />
+        );
+      })()}
     </main>
   );
 }
