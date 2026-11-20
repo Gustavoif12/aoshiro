@@ -250,6 +250,9 @@ const AppContent = () => {
   const [showCopyPrompt, setShowCopyPrompt] = useState(false);
   const [showBudgetPrompt, setShowBudgetPrompt] = useState(false);
   const [budgetPromptValue, setBudgetPromptValue] = useState("");
+  // Rascunho do orçamento em Ajustes: null = sem edição (mostra o valor salvo).
+  const [budgetDraft, setBudgetDraft] = useState<string | null>(null);
+  const [budgetSaving, setBudgetSaving] = useState(false);
 
   const monthKey = mkKey(activeMonth.month, activeMonth.year);
   const debts = monthData[monthKey]?.debts ?? [];
@@ -504,7 +507,7 @@ const AppContent = () => {
     setToast(t(msg)); setToastError(err);
     window.setTimeout(() => setToast(""), 2800);
   };
-  const open = (next: View) => { setView(next); setQuery(""); };
+  const open = (next: View) => { setView(next); setQuery(""); setBudgetDraft(null); };
   useEffect(() => { localStorage.setItem("aoshiro_language", language); }, [language]);
 
   const totalPaid = debts.filter(d => d.paid).reduce((s, d) => s + d.value, 0);
@@ -1751,13 +1754,54 @@ const AppContent = () => {
         </Card>
       )}
       <div className="space-y-3">
-        <div className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4">
-          <p className="mb-2 text-sm font-semibold">{t("Orçamento mensal")}</p>
-          <input type="number" min="1" defaultValue={budget} key={budget}
-            aria-label={t("Orçamento mensal")}
-            onBlur={async e => { const v = Number(e.target.value); if (v > 0) { try { await persistBudget(v); notify("Orçamento atualizado."); } catch (error) { notify(error instanceof Error ? error.message : "Erro ao atualizar orçamento.", true); } } else { e.target.value = String(budget); } }}
-            className={`${inputWhite} text-lg font-semibold`} />
-        </div>
+        {(() => {
+          const draftValue = budgetDraft ?? (budget > 0 ? String(budget) : "");
+          const draftNumber = Number(draftValue.replace(",", "."));
+          const isDirty = budgetDraft !== null && draftNumber !== budget;
+          const isValid = Number.isFinite(draftNumber) && draftNumber > 0;
+          const saveBudget = async (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!isDirty || budgetSaving) return;
+            if (!isValid) { notify("Informe um orçamento mensal maior que zero.", true); return; }
+            setBudgetSaving(true);
+            try {
+              await persistBudget(draftNumber);
+              setBudgetDraft(null);
+              notify("Orçamento atualizado.");
+            } catch (error) {
+              notify(error instanceof Error ? error.message : "Erro ao atualizar orçamento.", true);
+            } finally {
+              setBudgetSaving(false);
+            }
+          };
+          return (
+            <form onSubmit={saveBudget} noValidate className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4">
+              <label htmlFor="settings-budget" className="block text-sm font-semibold">{t("Orçamento mensal")}</label>
+              <p className="mb-3 mt-0.5 text-xs text-[color:var(--text-2)]">{t("Vale para")} {MONTHS[activeMonth.month]} {activeMonth.year}</p>
+              <div className="flex items-stretch gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-[color:var(--field-border)] bg-white px-4 text-[color:var(--ink)] transition focus-within:ring-2 focus-within:ring-[color:var(--focus)]">
+                  <span className="shrink-0 text-sm font-semibold text-[color:var(--placeholder)]" aria-hidden="true">{CURRENCIES[currency].symbol}</span>
+                  <input id="settings-budget" type="number" inputMode="decimal" min="0.01" step="0.01" enterKeyHint="done"
+                    value={draftValue}
+                    placeholder={language === "en-US" ? "0.00" : "0,00"}
+                    onChange={e => setBudgetDraft(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Escape") setBudgetDraft(null); }}
+                    className="w-full min-w-0 bg-transparent py-3 text-lg font-semibold text-[color:var(--ink)] placeholder:text-[color:var(--placeholder)] outline-none" />
+                </div>
+                <button type="submit" disabled={!isDirty || budgetSaving}
+                  className={`flex shrink-0 items-center justify-center gap-1.5 rounded-2xl px-5 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] active:scale-[.98] ${isDirty ? "bg-[color:var(--accent)] text-[color:var(--on-accent)] hover:bg-[color:var(--accent-hover)]" : "cursor-default border border-[color:var(--border)] text-[color:var(--positive)]"}`}>
+                  {budgetSaving ? t("Salvando…") : isDirty ? t("Salvar") : <><Icon name="check" size={15} />{t("Salvo")}</>}
+                </button>
+              </div>
+              {isDirty && (
+                <p className="mt-2 text-xs text-[color:var(--text-2)]">
+                  {t("Alteração não salva.")}{" "}
+                  <button type="button" onClick={() => setBudgetDraft(null)} className="rounded font-semibold underline underline-offset-4 hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">{t("Desfazer")}</button>
+                </p>
+              )}
+            </form>
+          );
+        })()}
         <button onClick={async () => { const next = !darkMode; setDarkMode(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ dark_mode: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} className={rowBtn} role="switch" aria-checked={darkMode}>
           <div className="flex items-center gap-3">
             <Icon name={darkMode ? "sun" : "moon"} size={18} />
@@ -1768,18 +1812,6 @@ const AppContent = () => {
           </div>
           <div className={`relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-300 ${darkMode ? "bg-[color:var(--accent)]" : "bg-[color:var(--toggle-off)]"}`} aria-hidden="true">
             <span className={`absolute top-1 size-[22px] rounded-full bg-[color:var(--knob)] shadow transition-all duration-300 ${darkMode ? "left-[26px]" : "left-1"}`} />
-          </div>
-        </button>
-        <button onClick={async () => { const next = !hideBalance; setHideBalance(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ hide_balance: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} className={rowBtn} role="switch" aria-checked={hideBalance}>
-          <div className="flex items-center gap-3">
-            <Icon name="eyeOff" size={18} />
-            <div>
-              <p className="text-sm font-semibold">{t("Ocultar saldo")}</p>
-              <p className="text-xs text-[color:var(--text-2)]">{hideBalance ? t("Ativado") : t("Desativado")}</p>
-            </div>
-          </div>
-          <div className={`relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors duration-300 ${hideBalance ? "bg-[color:var(--accent)]" : "bg-[color:var(--toggle-off)]"}`} aria-hidden="true">
-            <span className={`absolute top-1 size-[22px] rounded-full bg-[color:var(--knob)] shadow transition-all duration-300 ${hideBalance ? "left-[26px]" : "left-1"}`} />
           </div>
         </button>
         <div className="rounded-2xl border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-4">

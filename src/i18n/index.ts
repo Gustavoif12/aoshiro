@@ -2,6 +2,11 @@ export type Language = "pt-BR" | "en-US" | "es-ES";
 
 export const translations: Record<Language, Record<string, string>> = {
   "pt-BR": {
+    "Vale para": "Vale para",
+    "Salvo": "Salvo",
+    "Salvando…": "Salvando…",
+    "Alteração não salva.": "Alteração não salva.",
+    "Desfazer": "Desfazer",
     "Adicionar": "Adicionar",
 
     "+ Depositar": "+ Depositar",
@@ -296,6 +301,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "Venceu": "Venceu",
   },
   "en-US": {
+    "Vale para": "Applies to",
+    "Salvo": "Saved",
+    "Salvando…": "Saving…",
+    "Alteração não salva.": "Unsaved change.",
+    "Desfazer": "Undo",
     "Adicionar": "Add",
 
     "+ Depositar": "+ Deposit",
@@ -590,6 +600,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "Venceu": "Was due",
   },
   "es-ES": {
+    "Vale para": "Válido para",
+    "Salvo": "Guardado",
+    "Salvando…": "Guardando…",
+    "Alteração não salva.": "Cambio sin guardar.",
+    "Desfazer": "Deshacer",
     "Adicionar": "Agregar",
 
     "+ Depositar": "+ Depositar",
