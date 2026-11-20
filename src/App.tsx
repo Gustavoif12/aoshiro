@@ -922,7 +922,11 @@ const AppContent = () => {
       aria-label={t("Navegação principal")}
       className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[460px] px-2 pt-2 pb-[max(10px,env(safe-area-inset-bottom))] md:static md:mx-0 md:max-w-none md:rounded-3xl md:border md:border-[color:var(--text)]/10 md:bg-[color:var(--surface)] md:p-2"
     >
-      <div className="flex items-stretch gap-1 rounded-[26px] border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-1.5 shadow-xl backdrop-blur-2xl md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
+      {/* Celular: grade de 4 colunas iguais. O destaque do item ativo envolve só o ícone
+          (pílula de largura fixa), então o texto nunca fica maior que o destaque, em
+          nenhum idioma. O peso da fonte não muda ao ativar, para o rótulo não "pular".
+          Computador (md): mantém a barra lateral com o item ativo preenchido. */}
+      <div className="grid grid-cols-4 gap-0.5 rounded-[26px] border border-[color:var(--text)]/10 bg-[color:var(--surface)] p-1.5 shadow-xl backdrop-blur-2xl md:flex md:flex-col md:gap-1 md:rounded-2xl md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
         {navItems.map(([id, ic, lb]) => {
           const isActive = view === id;
           return (
@@ -931,14 +935,13 @@ const AppContent = () => {
               type="button"
               onClick={() => open(id)}
               aria-current={isActive ? "page" : undefined}
-              aria-label={lb}
               title={lb}
-              className={`flex min-h-[60px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[19px] px-0.5 py-1.5 text-xs font-medium leading-none transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)] active:scale-[.97] md:min-h-12 md:w-full md:flex-row md:flex-none md:justify-start md:gap-3 md:rounded-xl md:px-3 md:py-2.5 md:text-sm ${isActive ? "bg-[color:var(--accent)]/10 font-bold text-[color:var(--accent-text)] md:bg-[color:var(--accent)] md:font-bold md:text-[color:var(--on-accent)] md:shadow-sm" : "text-[color:var(--text-2)] hover:bg-[color:var(--text)]/10 hover:text-[color:var(--text)]"}`}
+              className={`group flex min-h-[60px] min-w-0 flex-col items-center justify-center gap-1 rounded-[19px] px-0.5 py-1.5 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)] active:scale-[.97] md:min-h-12 md:w-full md:flex-row md:justify-start md:gap-3 md:rounded-xl md:px-3 md:py-2.5 ${isActive ? "text-[color:var(--accent-text)] md:bg-[color:var(--accent)] md:text-[color:var(--on-accent)] md:shadow-sm" : "text-[color:var(--text-2)] hover:text-[color:var(--text)] md:hover:bg-[color:var(--text)]/10"}`}
             >
-              <span className={`grid size-7 shrink-0 place-items-center rounded-full transition md:size-9 md:rounded-xl ${isActive ? "md:bg-[color:var(--on-accent)]/[0.15]" : "md:bg-transparent"}`}>
-                <Icon name={ic} size={19} />
+              <span className={`grid h-8 w-14 max-w-full shrink-0 place-items-center rounded-full transition-all duration-300 md:size-9 md:rounded-xl ${isActive ? "bg-[color:var(--accent)]/15 md:bg-[color:var(--on-accent)]/[0.15]" : "group-hover:bg-[color:var(--text)]/10 md:bg-transparent md:group-hover:bg-transparent"}`}>
+                <Icon name={ic} size={20} />
               </span>
-              <span className={`whitespace-nowrap text-center md:text-left ${isActive ? "md:text-[color:var(--on-accent)]" : ""}`}>{lb}</span>
+              <span className={`block max-w-full truncate text-center text-[11px] font-semibold leading-tight md:text-left md:text-sm ${isActive ? "md:font-bold" : "md:font-medium"}`}>{lb}</span>
             </button>
           );
         })}
