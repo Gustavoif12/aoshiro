@@ -1689,7 +1689,7 @@ const AppContent = () => {
           </button>
         </div>
         <div className="mt-4 rounded-2xl bg-[color:var(--surface)] p-3 text-xs text-[color:var(--text-2)]">
-          <strong className="text-[color:var(--text-2)]">{activeReminderCount}</strong>{t("lembrete(s) ativo(s) para datas futuras ou de hoje.")}</div>
+          <strong className="text-[color:var(--text-2)]">{activeReminderCount}</strong> {t("lembrete(s) ativo(s) para datas futuras ou de hoje.")}</div>
       </Card>
 
       {typeof window !== "undefined" && "Notification" in window && (
@@ -1841,7 +1841,7 @@ const AppContent = () => {
         <Header backTo="debts" />
         <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[color:var(--warning)]/50 bg-[color:var(--surface)] px-4 py-3">
           <span className="mt-0.5 text-base" aria-hidden="true">ℹ️</span>
-          <p className="text-xs leading-relaxed text-[color:var(--warning)]">{t("Esta tela é apenas para")}<strong>{t("registrar")}</strong> {t("como o pagamento foi feito. Nenhuma cobrança ou transferência é realizada aqui.")}
+          <p className="text-xs leading-relaxed text-[color:var(--warning)]">{t("Esta tela é apenas para")} <strong>{t("registrar")}</strong> {t("como o pagamento foi feito. Nenhuma cobrança ou transferência é realizada aqui.")}
           </p>
         </div>
 
