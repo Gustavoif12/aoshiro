@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createTranslator, getMonthNames, type Language } from "./i18n";
+import { friendlyError, isInvalidCredentials, isNetworkError } from "./lib/errors";
 import { Logo, SplashScreen } from "./brand/Logo";
 import type { Currency } from "./types";
 import { supabase, supabaseConfigured } from "./lib/supabaseClient";
@@ -673,7 +674,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
         }
       } catch (error) {
         console.error(error);
-        if (mounted) { setDataLoading(false); setToast("Não foi possível carregar sua conta."); setToastError(true); }
+        if (mounted) { setDataLoading(false); setToast(t(isNetworkError(error) ? friendlyError(error) : "Não foi possível carregar sua conta.")); setToastError(true); }
       }
     };
     void bootstrap();
@@ -695,7 +696,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
         void loadUserData(session.user).then(hasBudget => {
           setBudgetPromptValue("");
           setShowBudgetPrompt(!hasBudget);
-        }).catch(error => { console.error(error); setToast(error.message ?? "Erro ao carregar dados."); setToastError(true); });
+        }).catch(error => { console.error(error); setToast(t(friendlyError(error, "Erro ao carregar dados."))); setToastError(true); });
       }
     });
     return () => { mounted = false; listener.subscription.unsubscribe(); };
@@ -868,6 +869,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     const email = String(fd.get("email") ?? "").trim();
     const password = String(fd.get("password") ?? "");
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error && !isInvalidCredentials(error)) { notify(friendlyError(error), true); return; }
     if (error || !data.user) {
       const next = loginAttempts + 1; setLoginAttempts(next);
       if (next >= 5) { setBlocked(true); notify("Conta bloqueada após 5 tentativas.", true); }
@@ -892,7 +894,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     if (password !== confirm) { notify("As senhas não coincidem.", true); return; }
     if (password.length < 6) { notify("Senha deve ter pelo menos 6 caracteres.", true); return; }
     const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name, phone: phone || null } } });
-    if (error) { notify(error.message, true); return; }
+    if (error) { notify(friendlyError(error), true); return; }
     if (!data.user) { notify("Não foi possível criar a conta.", true); return; }
     if (!data.session) {
       notify("Conta criada. Confirme seu e-mail para entrar.");
@@ -910,7 +912,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     e.preventDefault();
     if (forgotStep === "email") {
       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: window.location.origin });
-      if (error) { notify(error.message, true); return; }
+      if (error) { notify(friendlyError(error), true); return; }
       notify("Link de recuperação enviado para seu e-mail.");
       setForgotStep("code");
     } else if (forgotStep === "code") {
@@ -918,7 +920,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     } else {
       if (forgotNewPass.length < 6) { notify("Senha deve ter pelo menos 6 caracteres.", true); return; }
       const { error } = await supabase.auth.updateUser({ password: forgotNewPass });
-      if (error) { notify(error.message, true); return; }
+      if (error) { notify(friendlyError(error), true); return; }
       notify("Senha redefinida com sucesso!");
       setForgotStep("email"); setForgotEmail(""); setForgotCode(""); setForgotNewPass("");
       await supabase.auth.signOut();
@@ -947,7 +949,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
       month_key: `${monthKey}-01`,
     };
     const { data, error } = await supabase.from("debts").insert(payload).select("id").single();
-    if (error) { notify(error.message, true); return; }
+    if (error) { notify(friendlyError(error), true); return; }
     const debt: Debt = { id: Number(data.id), title: form.title, value: Number(form.value), due, category: category?.name ?? "Outros", categoryId: category?.id, paid: false, reminder: reminder || undefined };
     setDebtsForMonth(monthKey, [debt, ...debts]);
     setForm({ title: "", value: "", due: "", category: "", reminder: "" });
@@ -958,7 +960,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     if (!selectedDebt || !currentUser) return;
     const userId = currentUser.id;
     const { error } = await supabase.from("debts").update({ paid: true, paid_at: new Date().toISOString(), payment_method: method }).eq("id", selectedDebt.id).eq("user_id", userId);
-    if (error) { notify(error.message, true); return; }
+    if (error) { notify(friendlyError(error), true); return; }
     const paidAt = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
     setDebtsForMonth(monthKey, debts.map(d => d.id === selectedDebt.id ? { ...d, paid: true, paidAt, paymentMethod: method } : d));
     setSelectedDebt(null); open("debts");
@@ -969,7 +971,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     e.preventDefault();
     if (!currentUser || !newCatName || Number(newCatBudget) <= 0) { notify("Preencha nome e limite válido.", true); return; }
     const { data, error } = await supabase.from("categories").insert({ user_id: currentUser.id, name: newCatName.trim(), color: newCatColor, budget: Number(newCatBudget) }).select("id,name,color,budget").single();
-    if (error) { notify(error.message, true); return; }
+    if (error) { notify(friendlyError(error), true); return; }
     setCategories(p => [...p, { id: Number(data.id), name: data.name, color: data.color, budget: Number(data.budget) }]);
     setNewCatName(""); setNewCatBudget(""); setNewCatColor("#c8e5dd"); notify("Categoria criada.");
   };
@@ -986,7 +988,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     e.preventDefault();
     if (!currentUser || !newGoalLabel || Number(newGoalTarget) <= 0) { notify("Preencha descrição e valor alvo.", true); return; }
     const { data, error } = await supabase.from("goals").insert({ user_id: currentUser.id, label: newGoalLabel.trim(), target: Number(newGoalTarget) }).select("id,label,target").single();
-    if (error) { notify(error.message, true); return; }
+    if (error) { notify(friendlyError(error), true); return; }
     setGoals(p => [...p, { id: Number(data.id), label: data.label, target: Number(data.target), current: 0 }]);
     setNewGoalLabel(""); setNewGoalTarget(""); notify("Meta criada.");
   };
@@ -1005,7 +1007,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     if (depositMode === "rescue" && amt > reserved) { notify(`Só há ${fmt(reserved)} reservado neste mês.`, true); return; }
     const signedAmount = depositMode === "add" ? amt : -amt;
     const { error } = await supabase.from("goal_deposits").insert({ user_id: currentUser.id, goal_id: depositGoalId, month: `${monthKey}-01`, amount: signedAmount });
-    if (error) { notify(error.message, true); return; }
+    if (error) { notify(friendlyError(error), true); return; }
     setGoalDeposits(prev => {
       const gMap = { ...(prev[depositGoalId] ?? {}) };
       gMap[monthKey] = (gMap[monthKey] ?? 0) + signedAmount;
@@ -1168,7 +1170,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
               <p className="text-sm leading-relaxed text-[color:var(--text-2)]">{t("Enviamos um link de recuperação para")} <strong>{forgotEmail}</strong>.</p>
               <p className="rounded-xl bg-[color:var(--accent)]/10 px-3 py-2 text-xs leading-relaxed text-[color:var(--accent-text)]">{t("Abra o link no e-mail. Depois desta confirmação, a tela para criar sua nova senha será liberada automaticamente.")}</p>
               <button type="submit" className={btnPrimary}>{t("Verificar recuperação")}</button>
-              <button type="button" onClick={async () => { const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: window.location.origin }); if (error) notify(error.message, true); else notify("Link de recuperação reenviado."); }}
+              <button type="button" onClick={async () => { const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: window.location.origin }); if (error) notify(friendlyError(error), true); else notify("Link de recuperação reenviado."); }}
                 className="w-full rounded text-center text-sm text-[color:var(--text-2)] underline underline-offset-4 transition hover:text-[color:var(--text)] focus-visible:outline-none">{t("Reenviar link")}</button>
             </>}
             {forgotStep === "newpass" && <>
@@ -1262,7 +1264,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
       }));
       if (copiedPayload.length === 0) return;
       const { data, error } = await supabase.from("debts").insert(copiedPayload).select("id,title,value,due_date,category_id,paid,reminder_date,paid_at,payment_method");
-      if (error) { notify(error.message, true); return; }
+      if (error) { notify(friendlyError(error), true); return; }
       const copied: Debt[] = (data ?? []).map(d => ({ id: Number(d.id), title: d.title, value: Number(d.value), due: isoToBR(String(d.due_date)), category: d.category_id ? (categories.find(c => c.id === Number(d.category_id))?.name ?? "Outros") : "Outros", categoryId: d.category_id ? Number(d.category_id) : undefined, paid: Boolean(d.paid), reminder: undefined }));
       setDebtsForMonth(monthKey, copied);
       setShowCopyPrompt(false);
@@ -1359,7 +1361,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
         <div className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-[color:var(--accent)]/20 blur-2xl" />
         <div className="relative flex items-center justify-between">
           <p className={sectionLabel}>{t("Disponível neste mês")}</p>
-          <button type="button" onClick={async () => { const next = !hideBalance; setHideBalance(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ hide_balance: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }}
+          <button type="button" onClick={async () => { const next = !hideBalance; setHideBalance(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ hide_balance: next }).eq("id", currentUser.id); if (error) notify(friendlyError(error), true); } }}
             aria-label={hideBalance ? t("Mostrar saldo") : t("Ocultar saldo")}
             className="-m-2 grid size-11 place-items-center rounded-xl text-[color:var(--text-2)] transition hover:text-[color:var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
             <Icon name={hideBalance ? "eyeOff" : "eye"} size={18} />
@@ -1711,7 +1713,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
       if (!editCatName || Number(editCatBudget) <= 0) { notify("Preencha nome e limite válido.", true); return; }
       if (!editingCat || !currentUser) return;
       const { data, error } = await supabase.from("categories").update({ name: editCatName.trim(), budget: Number(editCatBudget), color: editCatColor }).eq("id", editingCat.id).eq("user_id", currentUser.id).select("id,name,color,budget").single();
-      if (error) { notify(error.message, true); return; }
+      if (error) { notify(friendlyError(error), true); return; }
       setCategories(p => p.map(x => x.id === editingCat.id ? { id: Number(data.id), name: data.name, budget: Number(data.budget), color: data.color } : x));
       setEditingCat(null); notify("Categoria atualizada.");
     };
@@ -1764,7 +1766,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z" />
                       </svg>
                     </button>
-                    <button onClick={async () => { if (!currentUser) return; const { error } = await supabase.from("categories").delete().eq("id", c.id).eq("user_id", currentUser.id); if (error) { notify(error.message, true); return; } setCategories(p => p.filter(x => x.id !== c.id)); notify("Categoria removida."); }}
+                    <button onClick={async () => { if (!currentUser) return; const { error } = await supabase.from("categories").delete().eq("id", c.id).eq("user_id", currentUser.id); if (error) { notify(friendlyError(error), true); return; } setCategories(p => p.filter(x => x.id !== c.id)); notify("Categoria removida."); }}
                       aria-label={`Remover categoria ${catName(c.name)}`}
                       className="grid size-9 place-items-center rounded-xl text-[color:var(--text-3)] transition hover:bg-[color:var(--text)]/10 hover:text-[color:var(--warning)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
                       <Icon name="trash" size={16} />
@@ -1950,7 +1952,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
                       ? <span className="rounded-full bg-[color:var(--accent)]/20 px-2 py-0.5 text-xs font-bold text-[color:var(--accent-text)]">{t("Concluída")}</span>
                       : <span className="text-xs font-bold text-[color:var(--accent-text)]">{pct}%</span>
                     }
-                    <button onClick={async () => { if (!currentUser) return; const { error } = await supabase.from("goals").delete().eq("id", g.id).eq("user_id", currentUser.id); if (error) { notify(error.message, true); return; } setGoals(p => p.filter(x => x.id !== g.id)); setGoalDeposits(p => { const n = { ...p }; delete n[g.id]; return n; }); notify("Meta removida."); }}
+                    <button onClick={async () => { if (!currentUser) return; const { error } = await supabase.from("goals").delete().eq("id", g.id).eq("user_id", currentUser.id); if (error) { notify(friendlyError(error), true); return; } setGoals(p => p.filter(x => x.id !== g.id)); setGoalDeposits(p => { const n = { ...p }; delete n[g.id]; return n; }); notify("Meta removida."); }}
                       aria-label={`Remover meta ${g.label}`}
                       className="grid size-8 place-items-center rounded-xl text-[color:var(--text-3)] transition hover:bg-[color:var(--text)]/10 hover:text-[color:var(--warning)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
                       <Icon name="trash" size={14} />
@@ -2058,7 +2060,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
             <p className="font-semibold">{t("Lembretes de vencimento")}</p>
             <p className="mt-1 text-xs leading-relaxed text-[color:var(--text-2)]">{t("Os lembretes cadastrados nas dívidas ficam ativos automaticamente enquanto a dívida estiver em aberto.")}</p>
           </div>
-          <button type="button" onClick={async () => { const next = !notificationsEnabled; setNotificationsEnabled(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ notifications_enabled: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} role="switch" aria-checked={notificationsEnabled} aria-label={t("Lembretes de vencimento")}
+          <button type="button" onClick={async () => { const next = !notificationsEnabled; setNotificationsEnabled(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ notifications_enabled: next }).eq("id", currentUser.id); if (error) notify(friendlyError(error), true); } }} role="switch" aria-checked={notificationsEnabled} aria-label={t("Lembretes de vencimento")}
             className={`relative h-[30px] w-[52px] shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface)] ${notificationsEnabled ? "bg-[color:var(--accent)]" : "bg-[color:var(--toggle-off)]"}`}>
             <span className={`absolute top-1 size-[22px] rounded-full bg-[color:var(--knob)] shadow transition-all ${notificationsEnabled ? "left-[26px]" : "left-1"}`} />
           </button>
@@ -2209,7 +2211,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
               setBudgetDraft(null);
               notify("Orçamento atualizado.");
             } catch (error) {
-              notify(error instanceof Error ? error.message : "Erro ao atualizar orçamento.", true);
+              notify(friendlyError(error, "Erro ao atualizar orçamento."), true);
             } finally {
               setBudgetSaving(false);
             }
@@ -2242,7 +2244,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
             </form>
           );
         })()}
-        <button onClick={async () => { const next = !darkMode; setDarkMode(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ dark_mode: next }).eq("id", currentUser.id); if (error) notify(error.message, true); } }} className={rowBtn} role="switch" aria-checked={darkMode}>
+        <button onClick={async () => { const next = !darkMode; setDarkMode(next); if (currentUser) { const { error } = await supabase.from("profiles").update({ dark_mode: next }).eq("id", currentUser.id); if (error) notify(friendlyError(error), true); } }} className={rowBtn} role="switch" aria-checked={darkMode}>
           <div className="flex items-center gap-3">
             <Icon name={darkMode ? "sun" : "moon"} size={18} />
             <div>
@@ -2261,7 +2263,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
           </div>
           <div className="flex gap-2" role="group" aria-label={t("Selecionar moeda")}>
             {(Object.entries(CURRENCIES) as [Currency, (typeof CURRENCIES)[Currency]][]).map(([k, v]) => (
-              <button key={k} onClick={async () => { setCurrency(k); if (currentUser) { const { error } = await supabase.from("profiles").update({ currency: k }).eq("id", currentUser.id); if (error) { notify(error.message, true); return; } } notify(`Moeda: ${k}`); }}
+              <button key={k} onClick={async () => { setCurrency(k); if (currentUser) { const { error } = await supabase.from("profiles").update({ currency: k }).eq("id", currentUser.id); if (error) { notify(friendlyError(error), true); return; } } notify(`Moeda: ${k}`); }}
                 aria-pressed={currency === k}
                 className={`min-h-11 flex-1 rounded-xl py-2.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${currency === k ? "bg-[color:var(--accent)] font-bold text-[color:var(--on-accent)]" : "border border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--text-2)] hover:bg-[color:var(--text)]/10"}`}>
                 {v.symbol} {k}
@@ -2276,7 +2278,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
           </div>
           <div className="space-y-2" role="group" aria-label={t("Selecionar idioma")}>
             {(["pt-BR", "en-US", "es-ES"] as Language[]).map(k => (
-              <button key={k} onClick={async () => { setLanguage(k); localStorage.setItem("aoshiro_language", k); if (currentUser) { const { error } = await supabase.from("profiles").update({ language: k }).eq("id", currentUser.id); if (error) notify(error.message, true); } }}
+              <button key={k} onClick={async () => { setLanguage(k); localStorage.setItem("aoshiro_language", k); if (currentUser) { const { error } = await supabase.from("profiles").update({ language: k }).eq("id", currentUser.id); if (error) notify(friendlyError(error), true); } }}
                 aria-pressed={language === k}
                 className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)] ${language === k ? "bg-[color:var(--accent)] font-semibold text-[color:var(--on-accent)]" : "border border-[color:var(--border)] bg-[color:var(--surface-2)] text-[color:var(--text-2)] hover:bg-[color:var(--text)]/10"}`}>
                 {t(k === "pt-BR" ? "Português (Brasil)" : k === "en-US" ? "English (US)" : "Español")}
@@ -2370,7 +2372,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     void persistBudget(value).then(() => {
       setShowBudgetPrompt(false);
       setBudgetPromptValue("");
-    }).catch(error => notify(error instanceof Error ? error.message : "Erro ao salvar orçamento.", true));
+    }).catch(error => notify(friendlyError(error, "Erro ao salvar orçamento."), true));
     notify("Orçamento mensal definido.");
   };
 
