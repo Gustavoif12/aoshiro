@@ -2,6 +2,10 @@ export type Language = "pt-BR" | "en-US" | "es-ES";
 
 export const translations: Record<Language, Record<string, string>> = {
   "pt-BR": {
+    // Marca e abertura
+    "Versão": "Versão",
+    "Pular": "Pular",
+    "Carregando o Aoshiro": "Carregando o Aoshiro",
     // RF024 – tutoriais
     "Conhecendo o Aoshiro": "Conhecendo o Aoshiro",
     "Este é o seu saldo do mês": "Este é o seu saldo do mês",
@@ -383,6 +387,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "Venceu": "Venceu",
   },
   "en-US": {
+    // Marca e abertura
+    "Versão": "Version",
+    "Pular": "Skip",
+    "Carregando o Aoshiro": "Loading Aoshiro",
     // RF024 – tutoriais
     "Conhecendo o Aoshiro": "Getting to know Aoshiro",
     "Este é o seu saldo do mês": "This is your balance for the month",
@@ -764,6 +772,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "Venceu": "Was due",
   },
   "es-ES": {
+    // Marca e abertura
+    "Versão": "Versión",
+    "Pular": "Saltar",
+    "Carregando o Aoshiro": "Cargando Aoshiro",
     // RF024 – tutoriais
     "Conhecendo o Aoshiro": "Conociendo Aoshiro",
     "Este é o seu saldo do mês": "Este es tu saldo del mes",

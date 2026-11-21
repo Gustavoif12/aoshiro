@@ -1,5 +1,6 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createTranslator, getMonthNames, type Language } from "./i18n";
+import { Logo, SplashScreen } from "./brand/Logo";
 import type { Currency } from "./types";
 import { supabase, supabaseConfigured } from "./lib/supabaseClient";
 
@@ -386,7 +387,18 @@ const SupabaseConfigMessage = () => (
   </main>
 );
 
-const AppContent = () => {
+const THEME_STORAGE_KEY = "aoshiro_theme";
+/** Tema de partida (abertura e telas de login/cadastro): o último escolhido no Aoshiro neste aparelho;
+ *  na primeira vez, o tema do sistema. Depois do login, o tema salvo no perfil prevalece. */
+const getStartupTheme = (): "dark" | "light" => {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "dark" || stored === "light") return stored;
+  } catch { /* sem storage */ }
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+};
+
+const AppContent = ({ onReady }: { onReady?: () => void }) => {
   const [view, setView] = useState<View>("login");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
@@ -397,7 +409,7 @@ const AppContent = () => {
   const [periodFilter, setPeriodFilter] = useState("all");
   const [catPeriodFilter, setCatPeriodFilter] = useState("all");
   const [showPassword, setShowPassword] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => getStartupTheme() === "dark");
   const catColor = (hex: string) => (darkMode ? hex : STRONG_CATEGORY_COLOR[hex.toLowerCase()] ?? hex);
   const [hideBalance, setHideBalance] = useState(false);
   const [currency, setCurrency] = useState<Currency>("BRL");
@@ -720,6 +732,13 @@ const AppContent = () => {
   };
   const open = (next: View) => { setView(next); setQuery(""); setBudgetDraft(null); };
   useEffect(() => { localStorage.setItem("aoshiro_language", language); }, [language]);
+  useEffect(() => { if (!dataLoading) onReady?.(); }, [dataLoading, onReady]);
+  // Guarda no aparelho o tema escolhido no Aoshiro, para a próxima abertura já sair no tema certo.
+  // Só grava depois que o perfil carregou (antes disso darkMode ainda é o valor padrão).
+  useEffect(() => {
+    if (!currentUser || dataLoading) return;
+    try { localStorage.setItem(THEME_STORAGE_KEY, darkMode ? "dark" : "light"); } catch { /* sem storage */ }
+  }, [darkMode, currentUser, dataLoading]);
 
   // ----- RF024: tutoriais interativos -----
   useEffect(() => {
@@ -1033,12 +1052,9 @@ const AppContent = () => {
     <main className={`${bgClass} flex min-h-screen items-center justify-center p-5`}>
       <Toast />
       <section className="w-full max-w-sm" aria-label={t("Entrar na conta")}>
-        <div className="mb-10 flex items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] text-xl font-bold text-[color:var(--accent-text)]" aria-hidden="true">A</div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">Aoshiro</p>
-            <h1 className="text-xl font-semibold">{t("Suas finanças, claras.")}</h1>
-          </div>
+        <div className="mb-8 flex flex-col items-center gap-3 text-center">
+          <Logo className="h-auto w-64 max-w-full" />
+          <h1 className="text-lg font-semibold text-[color:var(--text-2)]">{t("Suas finanças, claras.")}</h1>
         </div>
         <div className="rounded-3xl border border-[color:var(--text)]/10 bg-[color:var(--surface-2)] p-8 shadow-2xl backdrop-blur-sm">
           <p className="mb-7 text-sm leading-relaxed text-[color:var(--text-2)]">{t("Entre para acompanhar seu dinheiro com calma e intenção.")}</p>
@@ -1081,12 +1097,9 @@ const AppContent = () => {
       <Toast />
       <section className="w-full max-w-sm" aria-label={t("Criar conta")}>
         <BackBtn to="login" />
-        <div className="mb-8 flex items-center gap-3">
-          <div className="grid size-12 place-items-center rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-2)] text-xl font-bold text-[color:var(--accent-text)]" aria-hidden="true">A</div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">Aoshiro</p>
-            <h1 className="text-xl font-semibold">{t("Criar conta")}</h1>
-          </div>
+        <div className="mb-8">
+          <Logo className="h-14 w-auto" />
+          <h1 className="mt-3 text-2xl font-semibold">{t("Criar conta")}</h1>
         </div>
         <div className="rounded-3xl border border-[color:var(--text)]/10 bg-[color:var(--surface-2)] p-8 shadow-2xl backdrop-blur-sm">
           <form onSubmit={handleRegister} className="space-y-4" noValidate>
@@ -1121,8 +1134,8 @@ const AppContent = () => {
       <section className="w-full max-w-sm" aria-label={t("Redefinir senha")}>
         <BackBtn to="login" />
         <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">Aoshiro</p>
-          <h1 className="mt-1 text-2xl font-semibold">{t("Redefinir senha")}</h1>
+          <Logo className="h-14 w-auto" />
+          <h1 className="mt-3 text-2xl font-semibold">{t("Redefinir senha")}</h1>
         </div>
         <div className="mb-8 flex items-center gap-2" aria-label={t("Etapas")}>
           {(["email", "code", "newpass"] as const).map((s, i) => {
@@ -1284,8 +1297,8 @@ const AppContent = () => {
     <header className="mb-8">
       {!isMainNav && <BackBtn to={backTo} />}
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={sectionLabel}>Aoshiro</p>
+        <div className="min-w-0">
+          <Logo className="h-11 w-auto" />
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">{pageTitle[view] ? t(pageTitle[view]) : ""}</h1>
         </div>
         <div className="relative flex shrink-0 items-center gap-2 pt-1">
@@ -2288,6 +2301,10 @@ const AppContent = () => {
         ))}
       </div>
       <button onClick={async () => { await supabase.auth.signOut(); setCurrentUser(null); open("login"); }} className={`mt-6 ${btnGhost}`}>{t("Sair da conta")}</button>
+      <footer className="mt-10 flex flex-col items-center gap-2 pb-2 text-center">
+        <Logo className="h-auto w-36" />
+        <p className="text-xs text-[color:var(--text-3)]">{t("Versão")} 1.0</p>
+      </footer>
     </>
   );
 
@@ -2414,5 +2431,23 @@ const AppContent = () => {
 }
 
 export default function App() {
-  return supabaseConfigured ? <AppContent /> : <SupabaseConfigMessage />;
+  const [ready, setReady] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const markReady = useCallback(() => setReady(true), []);
+  const hideSplash = useCallback(() => setShowSplash(false), []);
+  const [splashTheme] = useState(getStartupTheme);
+  const t = useMemo(() => {
+    const stored = localStorage.getItem("aoshiro_language");
+    return createTranslator(stored === "en-US" || stored === "es-ES" ? stored : "pt-BR");
+  }, []);
+  if (!supabaseConfigured) return <SupabaseConfigMessage />;
+  return (
+    <>
+      <AppContent onReady={markReady} />
+      {showSplash && (
+        <SplashScreen ready={ready} onDone={hideSplash} theme={splashTheme}
+          tagline={t("Suas finanças, claras.")} skipLabel={t("Pular")} loadingLabel={t("Carregando o Aoshiro")} />
+      )}
+    </>
+  );
 }

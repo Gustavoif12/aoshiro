@@ -4,7 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Aoshiro — gestão financeira pessoal." />
+    <meta name="theme-color" content="#0A1B2C" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Aoshiro</title>
+    <script>
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("aoshiro_theme"); } catch (e) {}
+        if (t !== "dark" && t !== "light") t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        var bg = t === "dark" ? "#0A1B2C" : "#E3EFF7";
+        document.documentElement.style.background = bg;
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute("content", bg);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
