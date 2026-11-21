@@ -34,6 +34,7 @@ export function Logo({ variant = "full", className, label = "Aoshiro" }: LogoPro
       role={label ? "img" : undefined}
       aria-label={label || undefined}
       aria-hidden={label ? undefined : true}
+      style={{ overflow: "visible" }}
       xmlns="http://www.w3.org/2000/svg"
     >
       <g fill={ink}>

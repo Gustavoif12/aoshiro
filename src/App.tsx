@@ -1053,7 +1053,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
       <Toast />
       <section className="w-full max-w-sm" aria-label={t("Entrar na conta")}>
         <div className="mb-8 flex flex-col items-center gap-3 text-center">
-          <Logo className="h-auto w-64 max-w-full" />
+          <Logo className="h-auto w-56 max-w-[80%]" />
           <h1 className="text-lg font-semibold text-[color:var(--text-2)]">{t("Suas finanças, claras.")}</h1>
         </div>
         <div className="rounded-3xl border border-[color:var(--text)]/10 bg-[color:var(--surface-2)] p-8 shadow-2xl backdrop-blur-sm">
@@ -1297,7 +1297,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     <header className="mb-8">
       {!isMainNav && <BackBtn to={backTo} />}
       <div className="flex items-center justify-between gap-3">
-        <Logo className="h-11 w-auto min-w-0 shrink" />
+        <Logo className="mr-5 h-11 w-auto min-w-0 shrink" />
         <div className="relative flex shrink-0 items-center gap-2">
           {action}
           {viewTour && (
@@ -2300,7 +2300,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
       </div>
       <button onClick={async () => { await supabase.auth.signOut(); setCurrentUser(null); open("login"); }} className={`mt-6 ${btnGhost}`}>{t("Sair da conta")}</button>
       <footer className="mt-10 flex flex-col items-center gap-2 pb-2 text-center">
-        <Logo className="h-auto w-36" />
+        <Logo className="h-auto w-32" />
         <p className="text-xs text-[color:var(--text-3)]">{t("Versão")} 1.0</p>
       </footer>
     </>

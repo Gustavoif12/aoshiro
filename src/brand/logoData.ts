@@ -1,7 +1,8 @@
 // Gerado a partir do desenho aprovado da logo (AE-4 · Pingo cortado). Não editar à mão.
 // Letras: Sora SemiBold (600), a mesma fonte do app. Coordenadas em unidades da fonte, linha de base em y = 800.
 
-export const LOGO_VIEWBOX_FULL = "-60 -493 4713 1533";
+// Caixa centrada no nome (margens iguais); a trilha de pétalas vaza à direita via overflow: visible.
+export const LOGO_VIEWBOX_FULL = "-60 -493 4005 1533";
 export const LOGO_VIEWBOX_COMPACT = "-30 -167 3945 997";
 
 /** As sete letras de "aoshiro"; o "i" vem sem pingo. */
