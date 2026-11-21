@@ -1223,7 +1223,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
   );
 
   const MonthNav = () => (
-    <div data-tour="month-nav" className="flex items-center gap-0.5 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1" aria-label={t("Navegar entre meses")}>
+    <div data-tour="month-nav" className="flex w-full items-center justify-between gap-0.5 sm:w-auto sm:justify-start rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1" aria-label={t("Navegar entre meses")}>
       <button onClick={goToPrev} aria-label={t("Mês anterior")}
         className="grid size-11 place-items-center rounded-xl transition hover:bg-[color:var(--text)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
         <Icon name="back" size={15} />
@@ -1296,13 +1296,9 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
   const Header = ({ action, backTo = "home" as View }: { action?: React.ReactNode; backTo?: View }) => (
     <header className="mb-8">
       {!isMainNav && <BackBtn to={backTo} />}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Logo className="h-11 w-auto" />
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">{pageTitle[view] ? t(pageTitle[view]) : ""}</h1>
-        </div>
-        <div className="relative flex shrink-0 items-center gap-2 pt-1">
-          {view === "home" && <MonthNav />}
+      <div className="flex items-center justify-between gap-3">
+        <Logo className="h-11 w-auto min-w-0 shrink" />
+        <div className="relative flex shrink-0 items-center gap-2">
           {action}
           {viewTour && (
             <button type="button" onClick={() => startTour(viewTour)} aria-label={t("Como usar esta tela")} title={t("Como usar esta tela")}
@@ -1322,6 +1318,8 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
           )}
         </div>
       </div>
+      <h1 className="mt-1 text-3xl font-semibold tracking-tight">{pageTitle[view] ? t(pageTitle[view]) : ""}</h1>
+      {view === "home" && <div className="mt-4"><MonthNav /></div>}
     </header>
   );
 
