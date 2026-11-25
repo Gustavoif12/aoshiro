@@ -86,7 +86,7 @@ const initialDebts: Debt[] = [];
 const initialCategories: Category[] = [
   { id: 1, name: "Alimentação", color: "#c8e5dd", budget: 0 },
   { id: 2, name: "Transporte", color: "#bdd7f0", budget: 0 },
-  { id: 3, name: "Lazer e diversão", color: "#f3c982", budget: 0 },
+  { id: 3, name: "Lazer e diversão", color: "#f5e6a3", budget: 0 },
 ];
 const initialGoals: Goal[] = [];
 
@@ -95,10 +95,13 @@ const initialGoals: Goal[] = [];
 const CATEGORY_PALETTE = [
   { pastel: "#c8e5dd", strong: "#2E7D68", name: "Verde" },
   { pastel: "#bdd7f0", strong: "#2F6EA3", name: "Azul" },
-  { pastel: "#f3c982", strong: "#9A6A12", name: "Âmbar" },
+  { pastel: "#f5e6a3", strong: "#8C7500", name: "Amarelo" },
   { pastel: "#f0bdd7", strong: "#B0457A", name: "Rosa" },
   { pastel: "#d7bdf0", strong: "#7457AE", name: "Lilás" },
 ] as const;
+// Cores que saíram da paleta e passam a ser exibidas (e regravadas) como a cor nova.
+const RETIRED_CATEGORY_COLORS: Record<string, string> = { "#f3c982": "#f5e6a3" }; // Âmbar → Amarelo
+const normalizeCategoryColor = (color: string) => RETIRED_CATEGORY_COLORS[color.toLowerCase()] ?? color;
 const STRONG_CATEGORY_COLOR: Record<string, string> = {
   ...Object.fromEntries(CATEGORY_PALETTE.map(c => [c.pastel, c.strong])),
   "#d4b8f0": "#6B6B8F", // "Outros", categoria do sistema
@@ -546,7 +549,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
         const defaults = [
           { user_id: user.id, name: "Alimentação", color: "#c8e5dd", budget: 0 },
           { user_id: user.id, name: "Transporte", color: "#bdd7f0", budget: 0 },
-          { user_id: user.id, name: "Lazer e diversão", color: "#f3c982", budget: 0 },
+          { user_id: user.id, name: "Lazer e diversão", color: "#f5e6a3", budget: 0 },
         ];
         const seed = await supabase.from("categories").insert(defaults).select("id,name,color,budget");
         if (seed.error) throw seed.error;
@@ -644,7 +647,14 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
       const languageValue = profile.language === "en-US" || profile.language === "es-ES" ? profile.language : "pt-BR";
       const currencyValue = profile.currency === "USD" || profile.currency === "EUR" ? profile.currency : "BRL";
       setCurrentUser({ id: user.id, name: profile.name, email: user.email ?? "", phone: profile.phone ?? undefined });
-      setCategories(dbCategories.map(c => ({ id: Number(c.id), name: c.name, color: c.color, budget: Number(c.budget) })));
+      // Atualiza no banco as categorias que ainda usam uma cor retirada da paleta (sem travar o carregamento).
+      for (const [oldColor, newColor] of Object.entries(RETIRED_CATEGORY_COLORS)) {
+        if (dbCategories.some(c => c.color?.toLowerCase() === oldColor)) {
+          void supabase.from("categories").update({ color: newColor }).eq("user_id", user.id).eq("color", oldColor)
+            .then(({ error }) => { if (error) console.error(error); });
+        }
+      }
+      setCategories(dbCategories.map(c => ({ id: Number(c.id), name: c.name, color: normalizeCategoryColor(c.color), budget: Number(c.budget) })));
       setMonthData(nextMonthData);
       setGoals((goalsRes.data ?? []).map(g => ({ id: Number(g.id), label: g.label, target: Number(g.target), current: 0 })));
       setGoalDeposits(nextDeposits);
