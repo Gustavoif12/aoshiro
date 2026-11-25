@@ -1225,12 +1225,12 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
   );
 
   const MonthNav = () => (
-    <div data-tour="month-nav" className="flex w-full items-center justify-between gap-0.5 sm:w-auto sm:justify-start rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1" aria-label={t("Navegar entre meses")}>
+    <div data-tour="month-nav" className="flex w-full items-center justify-between gap-0.5 sm:w-auto sm:shrink-0 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1" aria-label={t("Navegar entre meses")}>
       <button onClick={goToPrev} aria-label={t("Mês anterior")}
         className="grid size-11 place-items-center rounded-xl transition hover:bg-[color:var(--text)]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]">
         <Icon name="back" size={15} />
       </button>
-      <span className="min-w-[118px] px-1 text-center text-xs font-semibold">
+      <span className="min-w-[118px] px-1 text-center text-xs font-semibold sm:min-w-[132px] sm:text-sm">
         {MONTHS[activeMonth.month]} {activeMonth.year}
       </span>
       <button onClick={goToNext} aria-label={t("Próximo mês")}
@@ -1320,8 +1320,11 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
           )}
         </div>
       </div>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">{pageTitle[view] ? t(pageTitle[view]) : ""}</h1>
-      {view === "home" && <div className="mt-4"><MonthNav /></div>}
+      {/* Celular: título e mês empilhados. Telas maiores: título à esquerda e mês à direita, na mesma linha. */}
+      <div className="mt-1 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-semibold tracking-tight">{pageTitle[view] ? t(pageTitle[view]) : ""}</h1>
+        {view === "home" && <MonthNav />}
+      </div>
     </header>
   );
 
