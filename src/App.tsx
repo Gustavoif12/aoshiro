@@ -525,7 +525,22 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     setShowCopyPrompt(!monthData[key]);
   };
 
-  const loadUserData = async (user: { id: string; email?: string | null }) => {
+  // Login/cadastro e o ouvinte de sessão do Supabase pedem os dados quase ao mesmo tempo.
+  // Compartilhamos a mesma carga para não criar as categorias padrão duas vezes.
+  const userLoadRef = useRef<{ id: string; promise: Promise<boolean> } | null>(null);
+  // Enquanto a conta é criada, ignora o login automático do Supabase: depois do cadastro o usuário vai para a tela de login.
+  const registeringRef = useRef(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const loadUserData = (user: { id: string; email?: string | null }): Promise<boolean> => {
+    if (userLoadRef.current?.id === user.id) return userLoadRef.current.promise;
+    const promise = fetchUserData(user).finally(() => {
+      if (userLoadRef.current?.promise === promise) userLoadRef.current = null;
+    });
+    userLoadRef.current = { id: user.id, promise };
+    return promise;
+  };
+
+  const fetchUserData = async (user: { id: string; email?: string | null }): Promise<boolean> => {
     setDataLoading(true);
     try {
       const [profileRes, categoriesRes, debtsRes, budgetsRes, goalsRes, depositsRes] = await Promise.all([
@@ -551,9 +566,12 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
           { user_id: user.id, name: "Transporte", color: "#bdd7f0", budget: 0 },
           { user_id: user.id, name: "Lazer e diversão", color: "#f5e6a3", budget: 0 },
         ];
-        const seed = await supabase.from("categories").insert(defaults).select("id,name,color,budget");
+        // upsert ignorando duplicadas: se outra aba/carga já criou as padrão, não dá erro de "já existe".
+        const seed = await supabase.from("categories").upsert(defaults, { onConflict: "user_id,name", ignoreDuplicates: true });
         if (seed.error) throw seed.error;
-        dbCategories = seed.data ?? [];
+        const seeded = await supabase.from("categories").select("id,name,color,budget").eq("user_id", user.id).order("id");
+        if (seeded.error) throw seeded.error;
+        dbCategories = seeded.data ?? [];
       } else {
         // Atualiza a categoria antiga dos usuários existentes sem perder vínculos com dívidas.
         const legacyCategory = dbCategories.find(c => c.name === "Lazer & diversão");
@@ -702,7 +720,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
         setDataLoading(false);
         setForgotStep("newpass");
         setView("forgot");
-      } else if (session?.user && event !== "INITIAL_SESSION") {
+      } else if (session?.user && event !== "INITIAL_SESSION" && !registeringRef.current) {
         void loadUserData(session.user).then(hasBudget => {
           setBudgetPromptValue("");
           setShowBudgetPrompt(!hasBudget);
@@ -886,7 +904,9 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
       else notify(`${t("Credenciais incorretas. Tentativa")} ${next}/5.`, true);
       return;
     }
-    const hasBudget = await loadUserData(data.user);
+    let hasBudget: boolean;
+    try { hasBudget = await loadUserData(data.user); }
+    catch (loadError) { console.error(loadError); notify(friendlyError(loadError, "Erro ao carregar dados."), true); return; }
     setLoginAttempts(0); setBlocked(false);
     setBudgetPromptValue("");
     setShowBudgetPrompt(!hasBudget);
@@ -903,19 +923,25 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
     const confirm = String(fd.get("confirm") ?? "");
     if (password !== confirm) { notify("As senhas não coincidem.", true); return; }
     if (password.length < 6) { notify("Senha deve ter pelo menos 6 caracteres.", true); return; }
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name, phone: phone || null } } });
-    if (error) { notify(friendlyError(error), true); return; }
-    if (!data.user) { notify("Não foi possível criar a conta.", true); return; }
-    if (!data.session) {
-      notify("Conta criada. Confirme seu e-mail para entrar.");
+    registeringRef.current = true;
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name, phone: phone || null } } });
+      if (error) {
+        // O gatilho que cria o perfil falha quando o celular já pertence a outra conta (coluna única).
+        if (phone && /database error saving new user/i.test(error.message)) { notify("Este celular já está cadastrado em outra conta.", true); return; }
+        notify(friendlyError(error), true); return;
+      }
+      if (!data.user) { notify("Não foi possível criar a conta.", true); return; }
+      // Com confirmação de e-mail ativa, o Supabase não dá erro para e-mail repetido: devolve um usuário sem identidades.
+      if (data.user.identities && data.user.identities.length === 0) { notify("Já existe uma conta com este e-mail.", true); return; }
+      // Sem confirmação de e-mail, o Supabase já entra na conta nova: sai dela para o usuário entrar pela tela de login.
+      if (data.session) await supabase.auth.signOut();
+      setRegisteredEmail(email);
+      notify(data.session ? "Conta criada com sucesso! Entre com seu e-mail e senha." : "Conta criada. Confirme seu e-mail para entrar.");
       open("login");
-      return;
+    } finally {
+      registeringRef.current = false;
     }
-    const hasBudget = await loadUserData(data.user);
-    setBudgetPromptValue("");
-    setShowBudgetPrompt(!hasBudget);
-    notify("Conta criada com sucesso!");
-    open("home");
   };
 
   const handleForgot = async (e: React.FormEvent) => {
@@ -1040,7 +1066,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
   const bgClass = `min-h-screen text-[color:var(--text)] transition-colors duration-500 ${darkMode ? BG_DARK : BG_LIGHT}`;
 
   const Toast = () => toast ? (
-    <div role="alert" aria-live="polite" className={`fixed bottom-24 left-1/2 z-50 max-w-xs -translate-x-1/2 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-2xl md:bottom-6 ${toastError ? "bg-[color:var(--toast-error)]" : "bg-[color:var(--toast)]"}`}>
+    <div role="alert" aria-live="polite" className={`fixed bottom-24 left-1/2 z-50 max-w-xs -translate-x-1/2 rounded-2xl px-5 py-3 text-sm font-semibold shadow-2xl ring-1 ring-[color:var(--toast-ring)] md:bottom-6 ${toastError ? "bg-[color:var(--toast-error)] text-[color:var(--toast-error-text)]" : "bg-[color:var(--toast)] text-[color:var(--toast-text)]"}`}>
       {toast}
     </div>
   ) : null;
@@ -1076,7 +1102,7 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
           <form onSubmit={handleLogin} className="space-y-4" noValidate>
             <label className="block">
               <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-[color:var(--text-2)]">{t("E-mail")}</span>
-              <input name="email" required type="email" placeholder="voce@email.com" defaultValue=""
+              <input name="email" required type="email" placeholder="voce@email.com" defaultValue={registeredEmail}
                 className="w-full rounded-2xl border border-[color:var(--field-border)] bg-white px-4 py-3.5 text-sm text-[color:var(--ink)] placeholder:text-[color:var(--placeholder)] outline-none transition focus-visible:ring-2 focus-visible:ring-[color:var(--focus)]" />
             </label>
             <label className="block">
@@ -1319,12 +1345,12 @@ const AppContent = ({ onReady }: { onReady?: () => void }) => {
             </button>
           )}
           {viewTour && showFirstVisitTip && (
-            <div role="status" className="absolute right-0 top-full z-30 mt-3 w-64 rounded-2xl bg-[color:var(--toast)] p-4 text-white shadow-2xl">
+            <div role="status" className="absolute right-0 top-full z-30 mt-3 w-64 rounded-2xl bg-[color:var(--toast)] p-4 text-[color:var(--toast-text)] shadow-2xl ring-1 ring-[color:var(--toast-ring)]">
               <span aria-hidden="true" className="absolute -top-1.5 right-4 size-3 rotate-45 rounded-sm bg-[color:var(--toast)]" />
               <p className="text-sm leading-relaxed">{t("Primeira vez aqui? Toque em")} <strong>?</strong> {t("para um guia rápido desta tela.")}</p>
               <div className="mt-2 flex gap-4">
-                <button type="button" onClick={() => startTour(viewTour)} className="rounded py-1 text-sm font-bold text-[#A5CFF8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A5CFF8]">{t("Ver guia")}</button>
-                <button type="button" onClick={() => updateTutorials(p => ({ ...p, tips: { ...p.tips, [viewTour]: true } }))} className="rounded py-1 text-sm font-semibold text-white/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A5CFF8]">{t("Agora não")}</button>
+                <button type="button" onClick={() => startTour(viewTour)} className="rounded py-1 text-sm font-bold text-[color:var(--toast-link)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--toast-link)]">{t("Ver guia")}</button>
+                <button type="button" onClick={() => updateTutorials(p => ({ ...p, tips: { ...p.tips, [viewTour]: true } }))} className="rounded py-1 text-sm font-semibold text-[color:var(--toast-text)]/80 hover:text-[color:var(--toast-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--toast-link)]">{t("Agora não")}</button>
               </div>
             </div>
           )}

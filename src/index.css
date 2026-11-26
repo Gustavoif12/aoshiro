@@ -27,8 +27,13 @@
   --toggle-off: #6E8EA8;
   --knob: #FFFFFF;
   --focus: #1F5C8F;
-  --toast: #10304A;
-  --toast-error: #8E2A25;
+  /* Avisos: escuros sobre o fundo claro */
+  --toast: #10304A;          /* texto 13,6:1; 11,6:1 vs fundo */
+  --toast-text: #FFFFFF;
+  --toast-link: #A5CFF8;     /* 8,3:1 sobre --toast */
+  --toast-error: #8E2A25;    /* texto 8,4:1 */
+  --toast-error-text: #FFFFFF;
+  --toast-ring: rgba(16, 48, 74, .10);
   --logo-soft: #A5CFF8;     /* logo: linha da lâmina e pétalas distantes */
 }
 .theme-dark {
@@ -55,8 +60,13 @@
   --toggle-off: #A9C0D4;
   --knob: #06182B;          /* 10,98:1 sobre --accent */
   --focus: #5AA7F0;
-  --toast: #06182B;
-  --toast-error: #8E2A25;
+  /* Avisos: claros sobre o fundo escuro (escuro sobre escuro se misturava) */
+  --toast: #EAF4FC;          /* texto 16,1:1; 15,6:1 vs fundo */
+  --toast-text: #06182B;
+  --toast-link: #1F5C8F;     /* 6,3:1 sobre --toast */
+  --toast-error: #FFDAD6;    /* texto 8,1:1 */
+  --toast-error-text: #7A1C16;
+  --toast-ring: rgba(255, 255, 255, .25);
   --logo-soft: #DCEBFA;
 }
 
